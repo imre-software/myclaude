@@ -1,0 +1,33 @@
+{
+  "name": "ClaudeCommand",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxt/ui": "4.5.0",
+    "@nuxtjs/i18n": "^10.2.3",
+    "@pinia/nuxt": "^0.11.3",
+    "better-sqlite3": "^12.6.2",
+    "nuxt": "^4.3.1",
+    "nuxt-charts": "^2.1.3",
+    "vue": "^3.5.28",
+    "vue-router": "^4.6.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  },
+  "devDependencies": {
+    "@internationalized/date": "^3.11.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.3.2",
+    "tailwindcss": "^4.2.1"
+  }
+}

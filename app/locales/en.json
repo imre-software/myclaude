@@ -1,0 +1,85 @@
+{
+  "nav": {
+    "overview": "Overview",
+    "costs": "Cost Analysis",
+    "sessions": "Sessions",
+    "projects": "Projects"
+  },
+  "overview": {
+    "title": "Overview",
+    "totalTokens": "Total Tokens",
+    "totalCost": "Total Cost",
+    "totalSessions": "Sessions",
+    "totalMessages": "Messages",
+    "dailyActivity": "Daily Activity",
+    "activityHeatmap": "Activity by Hour"
+  },
+  "costs": {
+    "title": "Cost Analysis",
+    "byModel": "Cost by Model",
+    "cacheSavings": "Cache Savings",
+    "distribution": "Token Distribution",
+    "actualCost": "Actual Cost",
+    "uncachedCost": "Without Cache",
+    "saved": "Saved"
+  },
+  "sessions": {
+    "title": "Sessions",
+    "detail": "Session Detail",
+    "date": "Date",
+    "project": "Project",
+    "messages": "Messages",
+    "tokens": "Tokens",
+    "cost": "Cost",
+    "duration": "Duration",
+    "model": "Model",
+    "totalSessions": "Total Sessions",
+    "totalCost": "Total Cost",
+    "avgCost": "Avg Cost/Session",
+    "avgDuration": "Avg Duration"
+  },
+  "projects": {
+    "title": "Projects",
+    "name": "Project",
+    "sessions": "Sessions",
+    "messages": "Messages",
+    "tokens": "Tokens",
+    "cost": "Cost",
+    "lastActive": "Last Active",
+    "totalProjects": "Total Projects",
+    "mostActive": "Most Active",
+    "highestCost": "Highest Cost",
+    "totalCost": "Total Cost"
+  },
+  "filters": {
+    "dateRange": "Date Range",
+    "model": "Model",
+    "today": "Today",
+    "last7d": "Last 7 days",
+    "last14d": "Last 14 days",
+    "last30d": "Last 30 days",
+    "allTime": "All time",
+    "custom": "Custom"
+  },
+  "common": {
+    "sync": "Sync now",
+    "loading": "Loading...",
+    "noData": "No data available",
+    "input": "Input",
+    "output": "Output",
+    "cacheRead": "Cache Read",
+    "cacheWrite": "Cache Write"
+  },
+  "source": {
+    "estimated": "Estimated",
+    "billingApi": "Anthropic Billing API",
+    "localFiles": "Local session files",
+    "overviewNote": "Costs from Anthropic Billing API (full history). Sessions, tokens, and activity from local files (limited to data on disk).",
+    "overviewNoteMax": "All data from local session files. Costs estimated from token usage and model pricing.",
+    "costsNote": "Cost data from Anthropic Billing API. Token breakdown estimated from local session files.",
+    "costsNoteMax": "Costs estimated from token usage and model pricing. Not actual subscription charges.",
+    "sessionsNote": "Session data from local files. Claude Code retains approximately 2 months of session history on disk.",
+    "projectsNote": "Project data derived from local session files. Only covers sessions still on disk.",
+    "jsonlRotationWarning": "Claude Code rotates local files every ~2 months. Synced data is preserved in the database, so historical coverage grows over time."
+  }
+}
