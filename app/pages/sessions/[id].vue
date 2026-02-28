@@ -17,7 +17,7 @@ const assistantMessages = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6">
+  <div class="flex flex-col gap-6 p-8">
     <div class="flex items-center gap-4">
       <UButton
         icon="i-lucide-arrow-start"

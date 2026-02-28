@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs'
 const DATA_DIR = join(process.cwd(), '.data')
 const DB_PATH = join(DATA_DIR, 'claude-stats.db')
 
-const CURRENT_SCHEMA_VERSION = 2
+const CURRENT_SCHEMA_VERSION = 3
 
 let db: Database.Database | null = null
 
@@ -91,6 +91,16 @@ function ensureSchema(database: Database.Database): void {
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
       )
+    `)
+  }
+
+  if (currentVersion < 3) {
+    // Re-sync all data with local-timezone dates instead of UTC
+    database.exec(`
+      DELETE FROM sessions;
+      DELETE FROM file_daily_costs;
+      DELETE FROM api_daily_costs;
+      DELETE FROM api_sync_state;
     `)
   }
 

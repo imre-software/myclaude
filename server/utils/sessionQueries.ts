@@ -132,13 +132,13 @@ export function queryDailyActivity(): DailySessionActivity[] {
   const db = getDb()
   const rows = db.prepare(`
     SELECT
-      SUBSTR(start_time, 1, 10) as date,
+      strftime('%Y-%m-%d', start_time, 'localtime') as date,
       COUNT(*) as session_count,
       SUM(message_count) as message_count,
       SUM(input_tokens + output_tokens + cache_read_tokens + cache_write_tokens) as total_tokens
     FROM sessions
     WHERE message_count >= 2 AND start_time IS NOT NULL
-    GROUP BY SUBSTR(start_time, 1, 10)
+    GROUP BY strftime('%Y-%m-%d', start_time, 'localtime')
     ORDER BY date ASC
   `).all() as DailyActivityRow[]
 
@@ -153,6 +153,31 @@ export function queryDailyActivity(): DailySessionActivity[] {
 export function queryApiDailyCosts(): DailyCostRow[] {
   const db = getDb()
   return db.prepare('SELECT date, model, cost FROM api_daily_costs ORDER BY date ASC').all() as DailyCostRow[]
+}
+
+export function queryDailyTokensByModel(): Map<string, Record<string, number>> {
+  const db = getDb()
+  const rows = db.prepare(`
+    SELECT
+      strftime('%Y-%m-%d', start_time, 'localtime') as date,
+      model,
+      SUM(input_tokens + output_tokens + cache_read_tokens + cache_write_tokens) as tokens
+    FROM sessions
+    WHERE message_count >= 2 AND start_time IS NOT NULL AND model IS NOT NULL
+    GROUP BY strftime('%Y-%m-%d', start_time, 'localtime'), model
+    ORDER BY date ASC
+  `).all() as { date: string, model: string, tokens: number }[]
+
+  const result = new Map<string, Record<string, number>>()
+  for (const row of rows) {
+    let entry = result.get(row.date)
+    if (!entry) {
+      entry = {}
+      result.set(row.date, entry)
+    }
+    entry[row.model] = (entry[row.model] ?? 0) + row.tokens
+  }
+  return result
 }
 
 export function queryDailyCosts(): DailyCostEntry[] {

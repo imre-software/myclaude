@@ -212,12 +212,17 @@ export const useStatsStore = defineStore('stats', () => {
     if (hasDateFilter.value) {
       const days = filteredDaily.value
 
-      // Aggregate costs per model from filtered daily data (costByModel is always current from SQLite)
+      // Aggregate costs and tokens per model from filtered daily data
       const modelAgg = new Map<string, { totalCost: number, totalTokens: number }>()
       for (const day of days) {
-        for (const [model, cost] of Object.entries(day.costByModel)) {
+        // Collect all models from both cost and token sources
+        const allModels = new Set([
+          ...Object.keys(day.costByModel),
+          ...Object.keys(day.tokensByModel),
+        ])
+        for (const model of allModels) {
           const existing = modelAgg.get(model) ?? { totalCost: 0, totalTokens: 0 }
-          existing.totalCost += cost
+          existing.totalCost += day.costByModel[model] ?? 0
           existing.totalTokens += day.tokensByModel[model] ?? 0
           modelAgg.set(model, existing)
         }

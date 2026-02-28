@@ -8,6 +8,10 @@ const chartData = computed(() => {
   return models.value.map(m => m.totalTokens)
 })
 
+const hasData = computed(() => {
+  return chartData.value.length > 0 && chartData.value.some(v => v > 0)
+})
+
 const MODEL_COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444'] as const
 
 const donutCategories = computed(() => {
@@ -26,28 +30,31 @@ const donutCategories = computed(() => {
       <h3 class="text-base font-semibold">{{ t('costs.distribution') }}</h3>
     </template>
 
-    <div v-if="chartData.length === 0" class="flex h-64 items-center justify-center text-muted">
+    <div v-if="!hasData" class="flex h-48 items-center justify-center text-muted">
       {{ t('common.noData') }}
     </div>
-    <div v-else class="flex flex-col items-center">
-      <DonutChart
-        :data="chartData"
-        :categories="donutCategories"
-        :height="260"
-        :radius="4"
-        :arc-width="24"
-        :pad-angle="0.05"
-      />
+    <div v-else class="flex items-center gap-6">
+      <div class="shrink-0">
+        <DonutChart
+          :data="chartData"
+          :categories="donutCategories"
+          :height="160"
+          :radius="4"
+          :arc-width="18"
+          :pad-angle="0.05"
+          hide-legend
+        />
+      </div>
 
-      <div class="mt-4 flex flex-wrap justify-center gap-4">
+      <div class="flex min-w-0 flex-col gap-2">
         <div
           v-for="(model, i) in models"
           :key="model.model"
           class="flex items-center gap-2 text-sm"
         >
-          <div class="size-3 rounded-full" :style="{ backgroundColor: ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444'][i % 5] }" />
-          <span>{{ shortModelName(model.model) }}</span>
-          <span class="text-muted">{{ formatTokens(model.totalTokens) }}</span>
+          <div class="size-3 shrink-0 rounded-full" :style="{ backgroundColor: MODEL_COLORS[i % MODEL_COLORS.length] }" />
+          <span class="truncate">{{ shortModelName(model.model) }}</span>
+          <span class="shrink-0 text-muted">{{ formatTokens(model.totalTokens) }}</span>
         </div>
       </div>
     </div>

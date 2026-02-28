@@ -144,7 +144,7 @@ async function fetchWindow(adminKey: string, windowStart: string, windowEnd: str
 
     const batchInsert = db.transaction((buckets: CostBucket[]) => {
       for (const bucket of buckets) {
-        const date = bucket.starting_at.slice(0, 10)
+        const date = toLocalDateStr(bucket.starting_at)
         const modelCosts = new Map<string, number>()
         for (const item of bucket.results) {
           const model = item.model || 'unknown'

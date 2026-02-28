@@ -7,45 +7,57 @@ const hours = computed(() => {
   return store.hourly
 })
 
-const maxCount = computed(() => {
-  return Math.max(...hours.value.map(h => h.sessionCount), 1)
-})
-
-const getIntensity = (count: number): string => {
-  if (count === 0) return 'bg-neutral-100 dark:bg-neutral-800'
-  const ratio = count / maxCount.value
-  if (ratio > 0.75) return 'bg-primary-500'
-  if (ratio > 0.5) return 'bg-primary-400'
-  if (ratio > 0.25) return 'bg-primary-300'
-  return 'bg-primary-200'
-}
-
 const formatHour = (hour: number): string => {
   if (hour === 0) return '12am'
   if (hour === 12) return '12pm'
   return hour < 12 ? `${hour}am` : `${hour - 12}pm`
 }
+
+const chartData = computed(() => {
+  return hours.value.map(h => ({
+    hour: formatHour(h.hour),
+    sessions: h.sessionCount,
+  }))
+})
+
+const xFormatter = (index: number) => {
+  return chartData.value[index]?.hour ?? ''
+}
+
+const peakHour = computed(() => {
+  if (hours.value.length === 0) return null
+  const max = hours.value.reduce((prev, curr) =>
+    curr.sessionCount > prev.sessionCount ? curr : prev,
+  )
+  if (max.sessionCount === 0) return null
+  return { hour: formatHour(max.hour), count: max.sessionCount }
+})
 </script>
 
 <template>
   <UCard>
     <template #header>
-      <h3 class="text-base font-semibold">{{ t('overview.activityHeatmap') }}</h3>
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-semibold">{{ t('overview.activityHeatmap') }}</h3>
+        <span v-if="peakHour" class="text-sm text-muted">
+          Peak: {{ peakHour.hour }} ({{ peakHour.count }} sessions)
+        </span>
+      </div>
     </template>
 
-    <div class="grid grid-cols-12 gap-1.5">
-      <div
-        v-for="entry in hours"
-        :key="entry.hour"
-        class="flex flex-col items-center gap-1"
-      >
-        <div
-          class="size-8 rounded-md transition-colors"
-          :class="getIntensity(entry.sessionCount)"
-          :title="`${formatHour(entry.hour)}: ${entry.sessionCount} sessions`"
-        />
-        <span class="text-xs text-muted">{{ formatHour(entry.hour) }}</span>
-      </div>
+    <div v-if="chartData.length === 0" class="flex h-48 items-center justify-center text-muted">
+      {{ t('common.noData') }}
     </div>
+    <BarChart
+      v-else
+      :data="chartData"
+      :categories="{ sessions: { name: 'Sessions', color: '#3b82f6' } }"
+      :y-axis="['sessions']"
+      x-axis="hour"
+      :height="240"
+      :x-formatter="xFormatter"
+      y-label="Sessions"
+      hide-legend
+    />
   </UCard>
 </template>

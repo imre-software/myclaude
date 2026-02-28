@@ -12,7 +12,7 @@ const rotationWarning = computed(() =>
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6">
+  <div class="flex flex-col gap-6 p-8">
     <h1 class="text-2xl font-bold">{{ t('sessions.title') }}</h1>
 
     <StatsSessionsKpiGrid />

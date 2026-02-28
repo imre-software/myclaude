@@ -7,6 +7,7 @@ export default defineEventHandler(async (): Promise<DailyActivityEntry[]> => {
   const subType = await getSubscriptionType()
   const apiCosts = subType === 'api' ? queryApiDailyCosts() : []
   const dailyActivity = queryDailyActivity()
+  const dbTokensByModel = queryDailyTokensByModel()
 
   // Build a map of DB-derived daily activity (sessions, messages, tokens)
   const dbActivityByDate = new Map<string, { sessionCount: number, messageCount: number, totalTokens: number }>()
@@ -62,8 +63,11 @@ export default defineEventHandler(async (): Promise<DailyActivityEntry[]> => {
       const cacheActivity = cacheActivityByDate.get(date)
       const costs = costsByDate.get(date)
 
-      // Token breakdown by model from stats-cache (best available source for per-model tokens)
-      const tokensByModel = stats.dailyModelTokens.find(d => d.date === date)?.tokensByModel ?? {}
+      // Token breakdown by model: prefer stats-cache, fall back to DB sessions
+      const cacheTokens = stats.dailyModelTokens.find(d => d.date === date)?.tokensByModel
+      const tokensByModel = (cacheTokens && Object.keys(cacheTokens).length > 0)
+        ? cacheTokens
+        : (dbTokensByModel.get(date) ?? {})
       const totalTokens = dbActivity?.totalTokens
         ?? Object.values(tokensByModel).reduce((sum, t) => sum + t, 0)
 
