@@ -1,6 +1,7 @@
 {
   "nav": {
     "overview": "Overview",
+    "compare": "Compare",
     "costs": "Cost Analysis",
     "sessions": "Sessions",
     "projects": "Projects"
@@ -50,6 +51,17 @@
     "mostActive": "Most Active",
     "highestCost": "Highest Cost",
     "totalCost": "Total Cost"
+  },
+  "compare": {
+    "title": "Compare",
+    "currentPeriod": "Current Period",
+    "previousPeriod": "Previous Period",
+    "change": "Change",
+    "noComparison": "Select a date range to compare periods. Comparison is not available for \"All time\".",
+    "messages": "Messages",
+    "cost": "Cost",
+    "tokens": "Tokens",
+    "sessions": "Sessions"
   },
   "filters": {
     "dateRange": "Date Range",

@@ -18,6 +18,13 @@ interface SyncEvent {
   apiWindowsProcessed: number
 }
 
+function localDateStr(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 export const useStatsStore = defineStore('stats', () => {
   // Subscription type
   const subscriptionType = ref<'max' | 'api'>('max')
@@ -37,14 +44,16 @@ export const useStatsStore = defineStore('stats', () => {
   const dateRange = ref<DateRange>({ preset: 'all' })
   const selectedModels = ref<string[]>([])
 
-  // Computed date filter bounds
+  // Computed date filter bounds (local timezone)
   const dateStart = computed(() => {
     if (dateRange.value.preset === 'custom' && dateRange.value.start) {
       return dateRange.value.start
     }
     if (dateRange.value.preset === 'all') return null
+
+    const now = new Date()
     if (dateRange.value.preset === 'today') {
-      return new Date().toISOString().slice(0, 10)
+      return localDateStr(now)
     }
 
     const days = dateRange.value.preset === '7d' ? 7
@@ -52,7 +61,7 @@ export const useStatsStore = defineStore('stats', () => {
         : 30
     const d = new Date()
     d.setDate(d.getDate() - days)
-    return d.toISOString().slice(0, 10)
+    return localDateStr(d)
   })
 
   const dateEnd = computed(() => {

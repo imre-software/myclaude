@@ -17,6 +17,12 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     active: route.path === '/',
   },
   {
+    label: t('nav.compare'),
+    icon: 'i-lucide-git-compare-arrows',
+    to: '/compare',
+    active: route.path === '/compare',
+  },
+  {
     label: t('nav.costs'),
     icon: 'i-lucide-dollar-sign',
     to: '/costs',
