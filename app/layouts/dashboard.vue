@@ -41,6 +41,59 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     active: route.path === '/projects',
   },
 ])
+
+// Sync display modes
+// Sync display modes
+const isFirstSync = computed(() =>
+  statsStore.isSyncing && (!statsStore.overview || statsStore.overview.totalSessions === 0),
+)
+
+const isResync = computed(() =>
+  statsStore.isSyncing && !isFirstSync.value,
+)
+
+// Shared progress computations
+const syncProgressValue = computed<number | null>(() => {
+  if (statsStore.syncTotal > 0 && statsStore.syncProcessed < statsStore.syncTotal) {
+    return statsStore.syncProcessed
+  }
+  if (statsStore.apiSyncStatus === 'syncing_history' && statsStore.apiWindowsTotal > 0) {
+    return statsStore.apiWindowsProcessed
+  }
+  return null
+})
+
+const syncProgressMax = computed<number | undefined>(() => {
+  if (statsStore.syncTotal > 0 && statsStore.syncProcessed < statsStore.syncTotal) {
+    return statsStore.syncTotal
+  }
+  if (statsStore.apiSyncStatus === 'syncing_history' && statsStore.apiWindowsTotal > 0) {
+    return statsStore.apiWindowsTotal
+  }
+  return undefined
+})
+
+const syncPhaseText = computed(() => {
+  if (statsStore.syncTotal > 0 && statsStore.syncProcessed < statsStore.syncTotal) {
+    return 'Indexing sessions...'
+  }
+  if (!statsStore.isMax && statsStore.apiSyncStatus === 'syncing_recent') {
+    return 'Fetching billing data...'
+  }
+  if (!statsStore.isMax && statsStore.apiSyncStatus === 'syncing_history') {
+    return 'Syncing historical billing data...'
+  }
+  return 'Scanning sessions...'
+})
+
+const syncPercent = computed<number | null>(() => {
+  const val = syncProgressValue.value
+  const max = syncProgressMax.value
+  if (val !== null && max) {
+    return Math.round((val / max) * 100)
+  }
+  return null
+})
 </script>
 
 <template>
@@ -69,16 +122,50 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     </UDashboardSidebar>
 
     <UDashboardPanel>
-      <StatsSyncProgress
-        v-if="statsStore.isSyncing"
-        :total="statsStore.syncTotal"
-        :processed="statsStore.syncProcessed"
-        :api-status="statsStore.apiSyncStatus"
-        :api-windows-total="statsStore.apiWindowsTotal"
-        :api-windows-processed="statsStore.apiWindowsProcessed"
-        class="px-6"
-      />
       <slot />
     </UDashboardPanel>
   </UDashboardGroup>
+
+  <!-- First sync: centered modal -->
+  <UModal
+    :open="isFirstSync"
+    :dismissible="false"
+    :close="false"
+  >
+    <template #content>
+      <div class="flex flex-col items-center gap-6 px-8 py-10">
+        <UIcon name="i-lucide-terminal" class="size-10 text-primary" />
+        <div class="flex flex-col items-center gap-1 text-center">
+          <h2 class="text-lg font-semibold">Setting up your dashboard</h2>
+          <p class="text-sm text-muted">{{ syncPhaseText }}</p>
+        </div>
+        <div class="w-full max-w-xs">
+          <UProgress
+            :model-value="syncProgressValue"
+            :max="syncProgressMax"
+            :ui="{ base: 'h-1.5' }"
+          />
+          <p v-if="syncPercent !== null" class="mt-2 text-center text-sm text-muted">
+            {{ syncPercent }}%
+          </p>
+        </div>
+      </div>
+    </template>
+  </UModal>
+
+  <!-- Re-sync: turbolinks-style top bar -->
+  <Transition
+    enter-active-class="transition-opacity duration-300"
+    leave-active-class="transition-opacity duration-300"
+    enter-from-class="opacity-0"
+    leave-to-class="opacity-0"
+  >
+    <div v-if="isResync" class="fixed inset-x-0 top-0 z-50">
+      <UProgress
+        :model-value="syncProgressValue"
+        :max="syncProgressMax"
+        :ui="{ base: 'h-1 rounded-none', indicator: 'rounded-none' }"
+      />
+    </div>
+  </Transition>
 </template>

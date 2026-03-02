@@ -150,6 +150,20 @@ export function queryDailyActivity(): DailySessionActivity[] {
   }))
 }
 
+export function queryHourlyActivityByDate(): { date: string, hour: number, sessionCount: number }[] {
+  const db = getDb()
+  return db.prepare(`
+    SELECT
+      strftime('%Y-%m-%d', start_time, 'localtime') as date,
+      CAST(strftime('%H', start_time, 'localtime') AS INTEGER) as hour,
+      COUNT(*) as sessionCount
+    FROM sessions
+    WHERE message_count >= 2 AND start_time IS NOT NULL
+    GROUP BY strftime('%Y-%m-%d', start_time, 'localtime'), CAST(strftime('%H', start_time, 'localtime') AS INTEGER)
+    ORDER BY date ASC, hour ASC
+  `).all() as { date: string, hour: number, sessionCount: number }[]
+}
+
 export function queryApiDailyCosts(): DailyCostRow[] {
   const db = getDb()
   return db.prepare('SELECT date, model, cost FROM api_daily_costs ORDER BY date ASC').all() as DailyCostRow[]

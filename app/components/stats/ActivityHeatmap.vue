@@ -2,10 +2,7 @@
 const { t } = useI18n()
 const store = useStatsStore()
 
-const hours = computed(() => {
-  if (!store.hourly) return []
-  return store.hourly
-})
+const hours = computed(() => store.filteredHourly)
 
 const formatHour = (hour: number): string => {
   if (hour === 0) return '12am'

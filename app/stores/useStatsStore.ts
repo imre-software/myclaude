@@ -1,10 +1,15 @@
 import type {
   DateRange,
   DailyActivityEntry,
-  HourlyEntry,
   ModelCostEntry,
   OverviewResponse,
 } from '~/types/stats'
+
+interface HourlyByDateEntry {
+  date: string
+  hour: number
+  sessionCount: number
+}
 
 type ApiSyncStatus = 'idle' | 'syncing_recent' | 'recent_done' | 'syncing_history' | 'done' | 'skipped'
 
@@ -78,7 +83,7 @@ export const useStatsStore = defineStore('stats', () => {
   // Data fetching - runs immediately during SSR (endpoints call syncSessionDb internally)
   const { data: overview, status: overviewStatus, refresh: refreshOverview } = useFetch<OverviewResponse>('/api/stats/overview')
   const { data: daily, status: dailyStatus, refresh: refreshDaily } = useFetch<DailyActivityEntry[]>('/api/stats/daily')
-  const { data: hourly, refresh: refreshHourly } = useFetch<HourlyEntry[]>('/api/stats/hourly')
+  const { data: hourlyByDate, refresh: refreshHourly } = useFetch<HourlyByDateEntry[]>('/api/stats/hourly')
   const { data: modelsData, refresh: refreshModels } = useFetch<{
     models: ModelCostEntry[]
     cacheSavings: { actualCost: number, uncachedCost: number, saved: number, savingsPercent: number }
@@ -168,6 +173,31 @@ export const useStatsStore = defineStore('stats', () => {
     }
 
     return data
+  })
+
+  // Filtered hourly data (aggregate date+hour entries by hour within the date range)
+  const filteredHourly = computed(() => {
+    if (!hourlyByDate.value) return []
+
+    let data = hourlyByDate.value
+
+    if (dateStart.value) {
+      data = data.filter(d => d.date >= dateStart.value!)
+    }
+    if (dateEnd.value) {
+      data = data.filter(d => d.date <= dateEnd.value!)
+    }
+
+    // Aggregate by hour across all matching dates
+    const hourCounts = new Map<number, number>()
+    for (const entry of data) {
+      hourCounts.set(entry.hour, (hourCounts.get(entry.hour) ?? 0) + entry.sessionCount)
+    }
+
+    return Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      sessionCount: hourCounts.get(hour) ?? 0,
+    }))
   })
 
   // Filtered overview (recompute totals from filtered daily)
@@ -344,11 +374,11 @@ export const useStatsStore = defineStore('stats', () => {
     // Raw data
     overview,
     daily,
-    hourly,
     modelsData,
 
     // Filtered data
     filteredDaily,
+    filteredHourly,
     filteredOverview,
     filteredModels,
     availableModels,
