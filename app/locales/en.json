@@ -92,6 +92,6 @@
     "costsNoteMax": "Costs estimated from token usage and model pricing. Not actual subscription charges.",
     "sessionsNote": "Session data from local files. Claude Code retains approximately 2 months of session history on disk.",
     "projectsNote": "Project data derived from local session files. Only covers sessions still on disk.",
-    "jsonlRotationWarning": "Claude Code rotates local files every ~2 months. Synced data is preserved in the database, so historical coverage grows over time."
+    "jsonlRotationWarning": "Claude Code rotates local files every ~2 months. Synced data is preserved in the database, so historical coverage grows over time. Oldest record: {date}."
   }
 }

@@ -1,14 +1,62 @@
 <script setup lang="ts">
 const { t } = useI18n()
 
-defineProps<{
+const props = defineProps<{
   label: string
-  value: string
+  rawValue: number | null
+  formatter: (n: number) => string
   icon: string
   trend?: string
   source?: 'api' | 'local'
   estimated?: boolean
 }>()
+
+const displayValue = ref<string | null>(null)
+let prevValue = 0
+let animationId = 0
+
+function easeOutCubic(t: number) {
+  return 1 - (1 - t) ** 3
+}
+
+watch(() => props.rawValue, (newVal, oldVal) => {
+  if (newVal === null) return
+
+  const from = oldVal ?? 0
+  const to = newVal
+  prevValue = to
+
+  // Skip animation on first load (from null)
+  if (oldVal === null || oldVal === undefined) {
+    displayValue.value = props.formatter(to)
+    return
+  }
+
+  // No change
+  if (from === to) return
+
+  cancelAnimationFrame(animationId)
+
+  const duration = 600
+  const start = performance.now()
+
+  function tick(now: number) {
+    const elapsed = now - start
+    const progress = Math.min(elapsed / duration, 1)
+    const eased = easeOutCubic(progress)
+    const current = from + (to - from) * eased
+
+    displayValue.value = props.formatter(current)
+
+    if (progress < 1) {
+      animationId = requestAnimationFrame(tick)
+    }
+  }
+
+  animationId = requestAnimationFrame(tick)
+}, { immediate: true })
+
+onBeforeUnmount(() => cancelAnimationFrame(animationId))
 </script>
 
 <template>
@@ -19,8 +67,13 @@ defineProps<{
       </div>
       <div class="min-w-0">
         <p class="text-sm text-muted truncate">{{ label }}</p>
-        <p class="text-2xl font-semibold truncate">{{ value }}</p>
-        <div v-if="trend || source || estimated" class="flex items-center gap-2">
+        <p class="text-2xl font-semibold truncate">
+          <template v-if="!displayValue">
+            <span class="inline-block w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700">&nbsp;</span>
+          </template>
+          <template v-else>{{ displayValue }}</template>
+        </p>
+        <div v-if="displayValue && (trend || source || estimated)" class="flex items-center gap-2">
           <p v-if="trend" class="text-sm text-muted">{{ trend }}</p>
           <span
             v-if="source"

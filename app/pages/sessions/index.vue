@@ -7,7 +7,9 @@ definePageMeta({
 })
 
 const rotationWarning = computed(() =>
-  store.isAllTime ? t('source.jsonlRotationWarning') : undefined,
+  store.isAllTime
+    ? t('source.jsonlRotationWarning', { date: store.overview?.firstSessionDate ? formatDate(store.overview.firstSessionDate) : '...' })
+    : undefined,
 )
 </script>
 
