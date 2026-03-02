@@ -29,6 +29,25 @@ interface SessionRow {
   duration: number
 }
 
+export interface DateFilter {
+  from?: string | null
+  to?: string | null
+}
+
+function buildDateConditions(filter: DateFilter): { conditions: string[], params: string[] } {
+  const conditions: string[] = []
+  const params: string[] = []
+  if (filter.from) {
+    conditions.push("strftime('%Y-%m-%d', start_time, 'localtime') >= ?")
+    params.push(filter.from)
+  }
+  if (filter.to) {
+    conditions.push("strftime('%Y-%m-%d', start_time, 'localtime') <= ?")
+    params.push(filter.to)
+  }
+  return { conditions, params }
+}
+
 function rowToSummary(row: SessionRow): SessionSummary {
   return {
     sessionId: row.session_id,
@@ -46,11 +65,20 @@ function rowToSummary(row: SessionRow): SessionSummary {
   }
 }
 
-export function queryAllSessions(): SessionSummary[] {
+export function queryAllSessions(filter?: DateFilter): SessionSummary[] {
   const db = getDb()
+  const conditions = ['message_count >= 2']
+  const params: string[] = []
+
+  if (filter) {
+    const df = buildDateConditions(filter)
+    conditions.push(...df.conditions)
+    params.push(...df.params)
+  }
+
   const rows = db.prepare(
-    'SELECT * FROM sessions WHERE message_count >= 2 ORDER BY start_time DESC',
-  ).all() as SessionRow[]
+    `SELECT * FROM sessions WHERE ${conditions.join(' AND ')} ORDER BY start_time DESC`,
+  ).all(...params) as SessionRow[]
   return rows.map(rowToSummary)
 }
 
@@ -61,6 +89,8 @@ interface QuerySessionsOptions {
   order?: string
   page?: number
   limit?: number
+  from?: string
+  to?: string
 }
 
 export function querySessions(opts: QuerySessionsOptions) {
@@ -85,6 +115,10 @@ export function querySessions(opts: QuerySessionsOptions) {
 
   const conditions: string[] = ['message_count >= 2']
   const params: (string | number)[] = []
+
+  const df = buildDateConditions({ from: opts.from, to: opts.to })
+  conditions.push(...df.conditions)
+  params.push(...df.params)
 
   if (opts.model) {
     conditions.push('model = ?')

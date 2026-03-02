@@ -204,12 +204,19 @@ async function doSync(): Promise<void> {
           continue
         }
 
-        const totalCost = calculateCost(parsed.model || 'claude-sonnet-4-6', {
-          inputTokens: parsed.inputTokens,
-          outputTokens: parsed.outputTokens,
-          cacheReadTokens: parsed.cacheReadTokens,
-          cacheWriteTokens: parsed.cacheWriteTokens,
-        })
+        // Use actual per-message costs from JSONL when available, fall back to token estimate
+        const jsonlCost = parsed.messages
+          .filter(m => m.role === 'assistant' && m.cost)
+          .reduce((sum, m) => sum + (m.cost ?? 0), 0)
+
+        const totalCost = jsonlCost > 0
+          ? jsonlCost
+          : calculateCost(parsed.model || 'claude-sonnet-4-6', {
+            inputTokens: parsed.inputTokens,
+            outputTokens: parsed.outputTokens,
+            cacheReadTokens: parsed.cacheReadTokens,
+            cacheWriteTokens: parsed.cacheWriteTokens,
+          }).totalCost
 
         upsertSession.run(
           file.path,
@@ -223,7 +230,7 @@ async function doSync(): Promise<void> {
           parsed.outputTokens,
           parsed.cacheReadTokens,
           parsed.cacheWriteTokens,
-          totalCost.totalCost,
+          totalCost,
           parsed.model,
           parsed.duration,
           file.mtime,

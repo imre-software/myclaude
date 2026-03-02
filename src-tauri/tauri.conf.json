@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/schema/master/tauri-conf-v2.json",
+  "productName": "Claude Command",
+  "version": "0.1.0",
+  "identifier": "com.claudecommand.desktop",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:3019",
+    "beforeBuildCommand": "pnpm build && rm -rf src-tauri/server && mkdir -p src-tauri/server && cp -r .output/server/* src-tauri/server/ && cp -r .output/public src-tauri/server/public"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "server": "server"
+    }
+  }
+}

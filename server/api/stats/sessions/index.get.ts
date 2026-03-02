@@ -10,5 +10,7 @@ export default defineEventHandler(async (event) => {
     order: String(query.order || 'desc'),
     model: query.model ? String(query.model) : undefined,
     project: query.project ? String(query.project) : undefined,
+    from: query.from ? String(query.from) : undefined,
+    to: query.to ? String(query.to) : undefined,
   })
 })

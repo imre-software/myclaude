@@ -40,22 +40,12 @@ export function formatDuration(ms: number): string {
 }
 
 export function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  return new Date(dateStr).toLocaleDateString()
 }
 
 export function formatDateTime(dateStr: string): string {
   const date = new Date(dateStr)
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
+  return `${date.toLocaleDateString()} ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
 }
 
 export function shortModelName(model: string): string {

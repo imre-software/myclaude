@@ -5,17 +5,25 @@ import type { SessionSummary } from '~/types/stats'
 
 const { t } = useI18n()
 const router = useRouter()
+const store = useStatsStore()
 
 const page = ref(1)
 const limit = ref(25)
 
+// Reset to page 1 when date range changes
+watch(() => [store.dateStart, store.dateEnd], () => {
+  page.value = 1
+})
+
 const { data: response, status } = useFetch('/api/stats/sessions', {
-  query: {
-    page,
-    limit,
+  query: computed(() => ({
+    page: page.value,
+    limit: limit.value,
     sort: 'startTime',
     order: 'desc',
-  },
+    from: store.dateStart || undefined,
+    to: store.dateEnd || undefined,
+  })),
 })
 
 const sessions = computed(() => response.value?.items ?? [])

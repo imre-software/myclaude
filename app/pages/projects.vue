@@ -8,7 +8,12 @@ definePageMeta({
   layout: 'dashboard',
 })
 
-const { data: projects, status } = useFetch<ProjectStats[]>('/api/stats/projects')
+const { data: projects, status } = useFetch<ProjectStats[]>('/api/stats/projects', {
+  query: computed(() => ({
+    from: store.dateStart || undefined,
+    to: store.dateEnd || undefined,
+  })),
+})
 
 const rotationWarning = computed(() =>
   store.isAllTime
@@ -19,7 +24,10 @@ const rotationWarning = computed(() =>
 
 <template>
   <div class="flex flex-col gap-6 p-8">
-    <h1 class="text-2xl font-bold">{{ t('projects.title') }}</h1>
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-2xl font-bold">{{ t('projects.title') }}</h1>
+      <StatsFilterToolbar />
+    </div>
 
     <StatsProjectsKpiGrid :projects="projects ?? []" />
     <StatsDataSourceNote :text="t('source.projectsNote')" :warning="rotationWarning" />

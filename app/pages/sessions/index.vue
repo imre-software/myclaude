@@ -15,7 +15,10 @@ const rotationWarning = computed(() =>
 
 <template>
   <div class="flex flex-col gap-6 p-8">
-    <h1 class="text-2xl font-bold">{{ t('sessions.title') }}</h1>
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-2xl font-bold">{{ t('sessions.title') }}</h1>
+      <StatsFilterToolbar />
+    </div>
 
     <StatsSessionsKpiGrid />
     <StatsDataSourceNote :text="t('source.sessionsNote')" :warning="rotationWarning" />

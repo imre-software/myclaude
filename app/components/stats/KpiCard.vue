@@ -12,7 +12,6 @@ const props = defineProps<{
 }>()
 
 const displayValue = ref<string | null>(null)
-let prevValue = 0
 let animationId = 0
 
 function easeOutCubic(t: number) {
@@ -24,15 +23,12 @@ watch(() => props.rawValue, (newVal, oldVal) => {
 
   const from = oldVal ?? 0
   const to = newVal
-  prevValue = to
 
-  // Skip animation on first load (from null)
   if (oldVal === null || oldVal === undefined) {
     displayValue.value = props.formatter(to)
     return
   }
 
-  // No change
   if (from === to) return
 
   cancelAnimationFrame(animationId)

@@ -121,8 +121,10 @@ const syncPercent = computed<number | null>(() => {
       />
     </UDashboardSidebar>
 
-    <UDashboardPanel>
-      <slot />
+    <UDashboardPanel :ui="{ body: 'p-0 sm:p-0 gap-0' }">
+      <template #body>
+        <slot />
+      </template>
     </UDashboardPanel>
   </UDashboardGroup>
 

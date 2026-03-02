@@ -3,6 +3,13 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
 
+  // SPA mode for Tauri - Nitro still runs as a standalone server
+  ssr: false,
+
+  devServer: {
+    port: 3019,
+  },
+
   runtimeConfig: {
     anthropicAdminKey: '',
   },
@@ -23,6 +30,17 @@ export default defineNuxtConfig({
   },
 
   css: ['~/assets/css/main.css'],
+
+  vite: {
+    clearScreen: false,
+    envPrefix: ['VITE_', 'TAURI_'],
+    server: {
+      strictPort: true,
+    },
+  },
+
+  // Ignore Tauri's Rust source
+  ignore: ['**/src-tauri/**'],
 
   nitro: {
     externals: {

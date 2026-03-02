@@ -34,35 +34,41 @@ const assistantMessages = computed(() => {
     </div>
 
     <template v-else-if="session">
-      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <StatsKpiCard
           :label="t('sessions.project')"
-          :value="session.project"
+          :raw-value="1"
+          :formatter="() => session!.project"
           icon="i-lucide-folder"
         />
         <StatsKpiCard
           :label="t('sessions.model')"
-          :value="shortModelName(session.model)"
+          :raw-value="1"
+          :formatter="() => shortModelName(session!.model)"
           icon="i-lucide-cpu"
         />
         <StatsKpiCard
           :label="t('sessions.messages')"
-          :value="session.messageCount.toLocaleString()"
+          :raw-value="session.messageCount"
+          :formatter="(n: number) => Math.round(n).toLocaleString()"
           icon="i-lucide-message-circle"
         />
         <StatsKpiCard
           :label="t('sessions.cost')"
-          :value="formatCost(session.totalCost)"
+          :raw-value="session.totalCost"
+          :formatter="formatCost"
           icon="i-lucide-dollar-sign"
         />
         <StatsKpiCard
           :label="t('sessions.duration')"
-          :value="formatDuration(session.duration)"
+          :raw-value="session.duration"
+          :formatter="formatDuration"
           icon="i-lucide-clock"
         />
         <StatsKpiCard
           :label="t('sessions.date')"
-          :value="formatDate(session.startTime)"
+          :raw-value="1"
+          :formatter="() => formatDate(session!.startTime)"
           icon="i-lucide-calendar"
         />
       </div>
