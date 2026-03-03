@@ -40,6 +40,18 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     to: '/projects',
     active: route.path === '/projects',
   },
+  {
+    label: t('nav.usage'),
+    icon: 'i-lucide-gauge',
+    to: '/usage',
+    active: route.path === '/usage',
+  },
+  {
+    label: t('nav.settings'),
+    icon: 'i-lucide-settings',
+    to: '/settings',
+    active: route.path === '/settings',
+  },
 ])
 
 // Sync display modes
@@ -106,7 +118,7 @@ const syncPercent = computed<number | null>(() => {
             <span class="text-base font-semibold">Claude Stats</span>
           </div>
           <UButton
-            icon="i-lucide-refresh-cw"
+            icon="i-lucide-rotate-cw"
             variant="ghost"
             size="sm"
             :loading="statsStore.isSyncing"

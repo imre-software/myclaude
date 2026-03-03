@@ -1,0 +1,5 @@
+import { getMemoryFiles } from '~~/server/utils/claudeConfig'
+
+export default defineEventHandler(async () => {
+  return getMemoryFiles()
+})
