@@ -42,6 +42,26 @@ function handleCancelEdit() {
 
 <template>
   <div class="flex flex-col gap-4">
+    <div v-if="isEditing && editingAgent" class="flex flex-col gap-4">
+      <UButton
+        :label="t('settings.backToList')"
+        icon="i-lucide-arrow-left"
+        variant="ghost"
+        size="sm"
+        class="self-start"
+        @click="handleCancelEdit"
+      />
+      <UCard>
+        <SettingsMarkdownEditor
+          :title="editingAgent.name"
+          :content="editingAgent.content"
+          @save="handleSaveEdit"
+          @cancel="handleCancelEdit"
+        />
+      </UCard>
+    </div>
+
+    <template v-else>
     <div class="flex items-center justify-between">
       <div>
         <h3 class="text-base font-medium">{{ t('settings.agents') }}</h3>
@@ -61,16 +81,7 @@ function handleCancelEdit() {
       <p class="text-sm">{{ t('settings.noAgents') }}</p>
     </div>
 
-    <UCard v-if="isEditing && editingAgent">
-      <SettingsMarkdownEditor
-        :title="editingAgent.name"
-        :content="editingAgent.content"
-        @save="handleSaveEdit"
-        @cancel="handleCancelEdit"
-      />
-    </UCard>
-
-    <UCard v-for="agent in agents" v-else :key="agent.filename">
+    <UCard v-for="agent in agents" :key="agent.filename">
       <div class="flex items-center justify-between gap-4">
         <div class="flex items-center gap-3 min-w-0">
           <div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -99,6 +110,7 @@ function handleCancelEdit() {
         </div>
       </div>
     </UCard>
+    </template>
 
     <SettingsAiGenerateDialog
       v-model:open="isAiDialogOpen"

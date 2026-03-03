@@ -74,6 +74,11 @@ export function useSettingsData() {
     return $fetch<GenerateResponse>('/api/settings/generate', { method: 'POST', body: { type, prompt } })
   }
 
+  async function aiUpdate(content: string, prompt: string): Promise<string> {
+    const res = await $fetch<{ content: string }>('/api/settings/ai-update', { method: 'POST', body: { content, prompt } })
+    return res.content
+  }
+
   return {
     config,
     mcpServers,
@@ -92,6 +97,7 @@ export function useSettingsData() {
     deleteSkill,
     saveAllHooks,
     generate,
+    aiUpdate,
     refreshConfig,
     refreshMcp,
     refreshMemory,

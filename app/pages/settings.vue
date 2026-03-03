@@ -17,6 +17,8 @@ const {
   isLoading,
 } = useSettingsData()
 
+const activeTab = ref('model')
+
 const tabItems = computed<TabsItem[]>(() => [
   { label: t('settings.model'), icon: 'i-lucide-cpu', value: 'model', slot: 'model' },
   { label: t('settings.permissions'), icon: 'i-lucide-shield', value: 'permissions', slot: 'permissions' },
@@ -39,8 +41,8 @@ const tabItems = computed<TabsItem[]>(() => [
 
     <UTabs
       v-else
+      v-model="activeTab"
       :items="tabItems"
-      default-value="model"
       variant="link"
       class="w-full"
       :unmount-on-hide="false"
@@ -56,7 +58,7 @@ const tabItems = computed<TabsItem[]>(() => [
 
       <template #permissions>
         <div v-if="config" class="py-4">
-          <SettingsPermissions :permissions="config.permissions" />
+          <SettingsPermissions :permissions="config.permissions" :mcp-servers="mcpServers ?? []" />
         </div>
       </template>
 

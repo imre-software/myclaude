@@ -83,6 +83,22 @@ You are an expert at...`
   return { content: cleaned, name, filename: `${name}.md` }
 }
 
+export async function updateWithAi(currentContent: string, userPrompt: string): Promise<string> {
+  const prompt = `Here is existing content:
+
+${currentContent}
+
+---
+
+Apply the following change: "${userPrompt}"
+
+Output ONLY the complete updated content. No explanations, no markdown fences, just the content.`
+
+  const content = await askClaude(prompt)
+  const cleaned = content.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '').trim()
+  return cleaned
+}
+
 export async function generateHook(userPrompt: string): Promise<GenerateResponse> {
   const prompt = `Generate a Claude Code hook configuration based on this description: "${userPrompt}"
 
