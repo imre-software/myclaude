@@ -1,28 +1,18 @@
 <script setup lang="ts">
 const { t } = useI18n()
-const { data, hardRefresh, isLoading } = useUsageData()
+const { data, startAutoRefresh, stopAutoRefresh } = useUsageData()
 
 definePageMeta({
   layout: 'dashboard',
 })
 
-function handleRefresh() {
-  hardRefresh()
-}
+onMounted(() => startAutoRefresh())
+onBeforeUnmount(() => stopAutoRefresh())
 </script>
 
 <template>
   <div class="flex flex-col gap-6 p-8">
-    <div class="sticky top-0 z-10 -mx-8 -mt-8 flex items-center justify-between border-b border-gray-200 bg-white px-8 py-6 dark:border-gray-800 dark:bg-gray-900">
-      <h1 class="text-2xl font-bold">{{ t('usage.title') }}</h1>
-      <UButton
-        icon="i-lucide-refresh-cw"
-        variant="ghost"
-        size="sm"
-        :loading="isLoading"
-        @click="handleRefresh"
-      />
-    </div>
+    <h1 class="text-2xl font-bold">{{ t('usage.title') }}</h1>
 
     <template v-if="data">
       <StatsUsageLimitGauges

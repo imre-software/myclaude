@@ -4,10 +4,20 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 const { t } = useI18n()
 const route = useRoute()
 const statsStore = useStatsStore()
+const settingsStore = useSettingsStore()
+const usageStore = useUsageStore()
 
 onMounted(() => {
   statsStore.startSync()
+  settingsStore.loadAll()
+  usageStore.load()
 })
+
+function handleRefresh() {
+  statsStore.forceSync()
+  settingsStore.loadAll()
+  usageStore.hardRefresh()
+}
 
 const navItems = computed<NavigationMenuItem[]>(() => [
   {
@@ -122,7 +132,7 @@ const syncPercent = computed<number | null>(() => {
             variant="ghost"
             size="sm"
             :loading="statsStore.isSyncing"
-            @click="statsStore.forceSync"
+            @click="handleRefresh"
           />
         </div>
       </template>

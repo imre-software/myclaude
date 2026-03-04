@@ -7,15 +7,7 @@ definePageMeta({
   layout: 'dashboard',
 })
 
-const {
-  config,
-  mcpServers,
-  memoryFiles,
-  agents,
-  skills,
-  hooks,
-  isLoading,
-} = useSettingsData()
+const store = useSettingsStore()
 
 const activeTab = ref('model')
 
@@ -35,12 +27,7 @@ const tabItems = computed<TabsItem[]>(() => [
   <div class="flex flex-col gap-6 p-8">
     <h1 class="text-2xl font-bold">{{ t('settings.title') }}</h1>
 
-    <div v-if="isLoading" class="flex h-64 items-center justify-center text-muted">
-      {{ t('common.loading') }}
-    </div>
-
     <UTabs
-      v-else
       v-model="activeTab"
       :items="tabItems"
       variant="link"
@@ -48,53 +35,53 @@ const tabItems = computed<TabsItem[]>(() => [
       :unmount-on-hide="false"
     >
       <template #model>
-        <div v-if="config" class="py-4">
+        <div v-if="store.config" class="py-4">
           <SettingsModelConfig
-            :config="config.model"
-            :attribution="config.attribution"
+            :config="store.config.model"
+            :attribution="store.config.attribution"
           />
         </div>
       </template>
 
       <template #permissions>
-        <div v-if="config" class="py-4">
-          <SettingsPermissions :permissions="config.permissions" :mcp-servers="mcpServers ?? []" />
+        <div v-if="store.config" class="py-4">
+          <SettingsPermissions :permissions="store.config.permissions" :mcp-servers="store.mcpServers" />
         </div>
       </template>
 
       <template #mcp>
         <div class="py-4">
-          <SettingsMcpServers :servers="mcpServers ?? []" />
+          <SettingsMcpServers :servers="store.mcpServers" />
         </div>
       </template>
 
       <template #memory>
         <div class="py-4">
-          <SettingsMemoryFiles :files="memoryFiles ?? []" />
+          <SettingsMemoryFiles :files="store.memoryFiles" />
         </div>
       </template>
 
       <template #agents>
         <div class="py-4">
-          <SettingsAgents :agents="agents ?? []" />
+          <SettingsAgents :agents="store.agents" />
         </div>
       </template>
 
       <template #skills>
         <div class="py-4">
-          <SettingsSkills :skills="skills ?? []" />
+          <SettingsSkills :skills="store.skills" />
         </div>
       </template>
 
       <template #hooks>
         <div class="py-4">
-          <SettingsHooks :hooks="hooks ?? []" />
+          <SettingsHooks :hooks="store.hooks" />
         </div>
       </template>
 
       <template #appearance>
-        <div v-if="config" class="py-4">
-          <SettingsAppearance :appearance="config.appearance" />
+        <div v-if="store.config" class="py-4">
+          <SettingsAppearance :appearance="store.config.appearance" />
         </div>
       </template>
     </UTabs>
