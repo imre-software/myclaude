@@ -1,5 +1,6 @@
 import type { UsageResponse } from '~~/app/types/usage'
 import { clearContextCache, getCachedContext, probeContext } from '~~/server/utils/contextProbe'
+import { clearRateLimitCache } from '~~/server/utils/rateLimitProbe'
 
 const emptyContext = {
   model: '',
@@ -17,6 +18,10 @@ export default defineEventHandler(async (event): Promise<UsageResponse> => {
   const query = getQuery(event)
   const forceRefresh = query.refresh === '1'
 
+  if (forceRefresh) {
+    clearRateLimitCache()
+  }
+
   const [rateLimits, fiveHour, sevenDay, today, month, burnRate, hourly] = await Promise.all([
     fetchRateLimits(),
     queryWindowUsage(5),
@@ -27,11 +32,11 @@ export default defineEventHandler(async (event): Promise<UsageResponse> => {
     queryTodayHourly(),
   ])
 
-  let context = forceRefresh ? null : getCachedContext()
+  let context = getCachedContext()
 
   if (forceRefresh) {
     clearContextCache()
-    context = await probeContext()
+    probeContext().catch(() => {})
   } else if (!context) {
     probeContext().catch(() => {})
   }

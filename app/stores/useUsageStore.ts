@@ -7,23 +7,36 @@ export const useUsageStore = defineStore('usage', () => {
 
   const isLoading = computed(() => !data.value && isRefreshing.value)
 
+  function mergeResponse(fresh: UsageResponse): UsageResponse {
+    if (fresh.rateLimits || !data.value?.rateLimits) return fresh
+    return { ...fresh, rateLimits: data.value.rateLimits }
+  }
+
   async function load() {
     if (data.value) return
     isRefreshing.value = true
-    data.value = await $fetch<UsageResponse>('/api/stats/usage')
+    data.value = mergeResponse(await $fetch<UsageResponse>('/api/stats/usage'))
     isRefreshing.value = false
   }
 
   async function hardRefresh() {
     isRefreshing.value = true
-    data.value = await $fetch<UsageResponse>('/api/stats/usage?refresh=1')
-    isRefreshing.value = false
+    try {
+      const fresh = await $fetch<UsageResponse>('/api/stats/usage', {
+        query: { refresh: '1', t: Date.now() },
+      })
+      data.value = mergeResponse(fresh)
+    } catch (err) {
+      if (import.meta.dev) console.error('[usage] refresh failed:', err)
+    } finally {
+      isRefreshing.value = false
+    }
   }
 
   function startAutoRefresh() {
     if (intervalId) return
     intervalId = setInterval(async () => {
-      data.value = await $fetch<UsageResponse>('/api/stats/usage')
+      data.value = mergeResponse(await $fetch<UsageResponse>('/api/stats/usage'))
     }, 60_000)
   }
 
