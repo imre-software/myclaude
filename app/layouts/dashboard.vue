@@ -59,10 +59,10 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     active: route.path === '/usage',
   },
   {
-    label: t('nav.notifications'),
-    icon: 'i-lucide-bell',
-    to: '/notifications',
-    active: route.path === '/notifications',
+    label: t('nav.monitoring'),
+    icon: 'i-lucide-activity',
+    to: '/monitoring',
+    active: route.path === '/monitoring',
   },
   {
     label: t('nav.settings'),

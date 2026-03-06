@@ -6,7 +6,7 @@
     "sessions": "Sessions",
     "projects": "Projects",
     "usage": "Usage & Limits",
-    "notifications": "Notifications",
+    "monitoring": "Monitoring",
     "settings": "Settings"
   },
   "overview": {
@@ -108,7 +108,12 @@
     "contextBreakdown": "Startup Context",
     "estimatedUsage": "Estimated usage by category",
     "freeSpace": "Free space",
-    "autocompactBuffer": "Autocompact buffer"
+    "autocompactBuffer": "Autocompact buffer",
+    "paceExhausts": "Exhausts in ~{time} at current pace",
+    "paceOnTrack": "On track",
+    "paceOnTrackWithRate": "On track ({rate}%/hr)",
+    "rateLimited": "Rate limited by Anthropic API - showing cached data. Try again in a minute.",
+    "rateLimitedNoData": "Rate limited by Anthropic API - no cached data available. This is a known Anthropic server issue. Try again in a few minutes."
   },
   "settings": {
     "title": "Settings",
@@ -197,7 +202,7 @@
     "update": "Update"
   },
   "notifications": {
-    "title": "Notifications",
+    "title": "Monitoring",
     "description": "Get alerted when you approach rate limits so you never get caught off guard.",
     "enableDesktop": "Enable desktop notifications",
     "permissionNotDetermined": "Notification permission has not been requested yet.",
@@ -217,7 +222,25 @@
     "testButton": "Test notification",
     "testSent": "Notification sent",
     "testFailed": "Failed to send notification",
-    "settingsTab": "Settings"
+    "thresholdAlertsTab": "Threshold Alerts",
+    "paceAlerts": "Pace Alerts",
+    "paceAlertsDesc": "Tracks your usage rate and projects whether you'll exhaust your limits before they reset.",
+    "paceNoData": "Pace data will appear after a few minutes of usage tracking.",
+    "paceInsufficient": "Collecting data",
+    "paceNoLiveData": "No live data",
+    "paceCritical": "Will exhaust",
+    "paceWarning": "At risk",
+    "paceCurrentUsage": "Current usage",
+    "paceRate": "Consumption rate",
+    "paceResetsIn": "Resets in",
+    "paceExhaustsAt": "Projected exhaustion",
+    "paceDataCollected": "Data collected",
+    "paceOnTrackDetail": "At your current pace, you will not exhaust this limit before it resets.",
+    "paceExhaustDetail": "At your current pace, this limit will be exhausted by {time}.",
+    "paceInsufDetail": "Need a few more minutes of snapshots to calculate your pace.",
+    "paceEnabled": "Send native alerts",
+    "paceEnabledHint": "Fire a desktop notification when projected to exhaust before reset",
+    "paceHistory": "Recent pace alerts"
   },
   "source": {
     "estimated": "Estimated",

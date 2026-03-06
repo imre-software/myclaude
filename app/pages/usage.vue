@@ -12,9 +12,17 @@ definePageMeta({
     <h1 class="text-2xl font-bold">{{ t('usage.title') }}</h1>
 
     <template v-if="store.data">
+      <UAlert
+        v-if="store.data.rateLimited"
+        color="warning"
+        icon="i-lucide-alert-triangle"
+        :title="store.data.rateLimits ? t('usage.rateLimited') : t('usage.rateLimitedNoData')"
+      />
+
       <StatsUsageLimitGauges
         v-if="store.data.rateLimits"
         :rate-limits="store.data.rateLimits"
+        :pace="store.data.pace"
       />
 
       <StatsUsageWindowGrid

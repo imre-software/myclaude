@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs'
 const DATA_DIR = join(process.cwd(), '.data')
 const DB_PATH = join(DATA_DIR, 'claude-stats.db')
 
-const CURRENT_SCHEMA_VERSION = 4
+const CURRENT_SCHEMA_VERSION = 5
 
 let db: Database.Database | null = null
 
@@ -128,6 +128,23 @@ function ensureSchema(database: Database.Database): void {
 
     database.exec(`
       CREATE INDEX IF NOT EXISTS idx_notification_history_created_at ON notification_history(created_at)
+    `)
+  }
+
+  if (currentVersion < 5) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS utilization_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        window_type TEXT NOT NULL,
+        utilization REAL NOT NULL,
+        resets_at TEXT,
+        recorded_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+      )
+    `)
+
+    database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_utilization_history_window_recorded
+        ON utilization_history(window_type, recorded_at)
     `)
   }
 

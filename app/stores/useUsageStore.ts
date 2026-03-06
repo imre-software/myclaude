@@ -9,18 +9,28 @@ export const useUsageStore = defineStore('usage', () => {
   async function load() {
     if (data.value) return
     isRefreshing.value = true
-    data.value = await $fetch<UsageResponse>('/api/stats/usage')
+    const result = await $fetch<UsageResponse>('/api/stats/usage')
+    console.log('[usage] load response:', {
+      rateLimits: result.rateLimits,
+      rateLimited: result.rateLimited,
+    })
+    data.value = result
     isRefreshing.value = false
   }
 
   async function hardRefresh() {
     isRefreshing.value = true
     try {
-      data.value = await $fetch<UsageResponse>('/api/stats/usage', {
+      const result = await $fetch<UsageResponse>('/api/stats/usage', {
         query: { refresh: '1', t: Date.now() },
       })
+      console.log('[usage] refresh response:', {
+        rateLimits: result.rateLimits,
+        rateLimited: result.rateLimited,
+      })
+      data.value = result
     } catch (err) {
-      if (import.meta.dev) console.error('[usage] refresh failed:', err)
+      console.error('[usage] refresh failed:', err)
     } finally {
       isRefreshing.value = false
     }

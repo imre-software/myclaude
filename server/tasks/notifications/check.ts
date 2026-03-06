@@ -1,5 +1,4 @@
 import type { NotificationWindowType } from '~~/app/types/notifications'
-import type { RateLimitInfo } from '~~/app/types/usage'
 
 interface DebounceState {
   [key: string]: { lastFiredAt: number, lastUtilization: number }
@@ -32,14 +31,33 @@ function saveDebounceState(state: DebounceState): void {
 export default defineTask({
   meta: {
     name: 'notifications:check',
-    description: 'Check rate limits against notification thresholds',
+    description: 'Check rate limits against notification thresholds and record utilization snapshots',
   },
   async run() {
-    const settings = getNotificationSettings()
-    if (!settings.enabled) return { result: 'disabled' }
-
+    // Cron runs hourly - fetch fresh data from the API each time
     const rateLimits = await fetchRateLimits()
-    if (!rateLimits) return { result: 'no-data' }
+
+    // Always record snapshots when rate limits are available, regardless of notification settings
+    if (rateLimits) {
+      const allWindows: Array<{ key: string, data: { utilization: number, resetsAt: string | null } | null }> = [
+        { key: 'fiveHour', data: rateLimits.fiveHour },
+        { key: 'sevenDay', data: rateLimits.sevenDay },
+        { key: 'sevenDaySonnet', data: rateLimits.sevenDaySonnet },
+        { key: 'sevenDayOpus', data: rateLimits.sevenDayOpus },
+      ]
+
+      for (const { key, data } of allWindows) {
+        if (data) {
+          recordUtilization(key, data.utilization, data.resetsAt)
+        }
+      }
+    }
+
+    // Alert logic requires both settings enabled and rate limits
+    const settings = getNotificationSettings()
+    if (!settings.enabled || !rateLimits) {
+      return { result: rateLimits ? 'alerts-disabled' : 'no-rate-limits' }
+    }
 
     const debounce = getDebounceState()
     const pending: Array<{ type: string, windowType: string, level: number, utilization: number, title: string, body: string }> = []
@@ -83,6 +101,48 @@ export default defineTask({
         debounce[debounceKey] = {
           lastFiredAt: debounce[debounceKey]?.lastFiredAt ?? 0,
           lastUtilization: data.utilization,
+        }
+      }
+    }
+
+    // Pace alerts
+    if (settings.paceAlerts.enabled) {
+      const paceWindows: Array<{ key: string, label: string, data: { utilization: number, resetsAt: string | null } | null }> = [
+        { key: 'fiveHour', label: '5-hour', data: rateLimits.fiveHour },
+        { key: 'sevenDay', label: '7-day (all models)', data: rateLimits.sevenDay },
+        { key: 'sevenDaySonnet', label: '7-day (Sonnet)', data: rateLimits.sevenDaySonnet },
+        { key: 'sevenDayOpus', label: '7-day (Opus)', data: rateLimits.sevenDayOpus },
+      ]
+
+      for (const { key, label, data } of paceWindows) {
+        if (!data) continue
+
+        const history = getUtilizationHistory(key)
+        const pace = calculatePace(history, data.utilization, data.resetsAt)
+
+        if (pace.willExhaust && pace.exhaustsInHours !== null && pace.resetsInHours !== null) {
+          const debounceKey = `pace:${key}`
+          const entry = debounce[debounceKey]
+          const cooldownMs = settings.cooldownMinutes * 60_000
+          const withinCooldown = entry && (Date.now() - entry.lastFiredAt) < cooldownMs
+
+          if (!withinCooldown) {
+            const exhaustLabel = pace.exhaustsInHours < 1
+              ? `${Math.round(pace.exhaustsInHours * 60)}min`
+              : `${pace.exhaustsInHours.toFixed(1)}h`
+            const resetLabel = pace.resetsInHours < 1
+              ? `${Math.round(pace.resetsInHours * 60)}min`
+              : `${pace.resetsInHours.toFixed(1)}h`
+            const title = `${label} pace alert`
+            const body = `At current rate, exhausts in ~${exhaustLabel} (resets in ${resetLabel})`
+
+            pending.push({ type: 'pace', windowType: key, level: 0, utilization: data.utilization, title, body })
+
+            debounce[debounceKey] = {
+              lastFiredAt: Date.now(),
+              lastUtilization: data.utilization,
+            }
+          }
         }
       }
     }

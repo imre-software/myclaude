@@ -7,10 +7,11 @@ definePageMeta({
   layout: 'dashboard',
 })
 
-const activeTab = ref('settings')
+const activeTab = ref('thresholds')
 
 const tabItems = computed<TabsItem[]>(() => [
-  { label: t('notifications.settingsTab'), icon: 'i-lucide-settings', value: 'settings', slot: 'settings' },
+  { label: t('notifications.thresholdAlertsTab'), icon: 'i-lucide-bell', value: 'thresholds', slot: 'thresholds' },
+  { label: t('notifications.paceAlerts'), icon: 'i-lucide-trending-up', value: 'pace', slot: 'pace' },
 ])
 </script>
 
@@ -25,9 +26,15 @@ const tabItems = computed<TabsItem[]>(() => [
       class="w-full"
       :unmount-on-hide="false"
     >
-      <template #settings>
+      <template #thresholds>
         <div class="py-4">
-          <SettingsNotifications />
+          <MonitoringThresholdAlerts />
+        </div>
+      </template>
+
+      <template #pace>
+        <div class="py-4">
+          <MonitoringPaceAlerts />
         </div>
       </template>
     </UTabs>

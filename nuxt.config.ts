@@ -62,7 +62,7 @@ export default defineNuxtConfig({
       tasks: true,
     },
     scheduledTasks: {
-      '* * * * *': ['notifications:check'],
+      '0 * * * *': ['notifications:check'],
     },
     typescript: {
       tsConfig: {

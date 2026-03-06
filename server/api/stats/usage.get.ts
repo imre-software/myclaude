@@ -1,6 +1,6 @@
-import type { UsageResponse } from '~~/app/types/usage'
+import type { UsageResponse, PaceInfo } from '~~/app/types/usage'
 import { clearContextCache, getCachedContext, probeContext } from '~~/server/utils/contextProbe'
-import { clearRateLimitCache } from '~~/server/utils/rateLimitProbe'
+import { clearRateLimitCache, wasRateLimited } from '~~/server/utils/rateLimitProbe'
 
 const emptyContext = {
   model: '',
@@ -41,11 +41,30 @@ export default defineEventHandler(async (event): Promise<UsageResponse> => {
     probeContext().catch(() => {})
   }
 
+  // Compute pace projections per window
+  let pace: PaceInfo | null = null
+  if (rateLimits) {
+    const computeWindowPace = (windowType: string, window: { utilization: number, resetsAt: string | null } | null) => {
+      if (!window) return null
+      const history = getUtilizationHistory(windowType)
+      return calculatePace(history, window.utilization, window.resetsAt)
+    }
+
+    pace = {
+      fiveHour: computeWindowPace('fiveHour', rateLimits.fiveHour),
+      sevenDay: computeWindowPace('sevenDay', rateLimits.sevenDay),
+      sevenDaySonnet: computeWindowPace('sevenDaySonnet', rateLimits.sevenDaySonnet),
+      sevenDayOpus: computeWindowPace('sevenDayOpus', rateLimits.sevenDayOpus),
+    }
+  }
+
   return {
     rateLimits,
+    rateLimited: wasRateLimited(),
     windows: { fiveHour, sevenDay, today, month },
     burnRate,
     hourly,
     context: context ?? emptyContext,
+    pace,
   }
 })

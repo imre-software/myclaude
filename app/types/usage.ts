@@ -62,8 +62,27 @@ export interface ContextBreakdown {
   autocompactPercentage: number
 }
 
+export interface PaceProjection {
+  currentRatePerHour: number
+  exhaustsInHours: number | null
+  resetsInHours: number | null
+  safeRatePerHour: number | null
+  willExhaust: boolean
+  status: 'on-track' | 'warning' | 'critical' | 'insufficient-data'
+  dataSpanMinutes: number
+  snapshotCount: number
+}
+
+export interface PaceInfo {
+  fiveHour: PaceProjection | null
+  sevenDay: PaceProjection | null
+  sevenDaySonnet: PaceProjection | null
+  sevenDayOpus: PaceProjection | null
+}
+
 export interface UsageResponse {
   rateLimits: RateLimitInfo | null
+  rateLimited: boolean
   windows: {
     fiveHour: WindowUsage
     sevenDay: WindowUsage
@@ -73,4 +92,5 @@ export interface UsageResponse {
   burnRate: BurnRate
   hourly: HourlyUsageEntry[]
   context: ContextBreakdown
+  pace: PaceInfo | null
 }
