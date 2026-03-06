@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const { t } = useI18n()
-const { data } = useUsageData()
+const store = useUsageData()
 
 definePageMeta({
   layout: 'dashboard',
@@ -11,24 +11,24 @@ definePageMeta({
   <div class="flex flex-col gap-6 p-8">
     <h1 class="text-2xl font-bold">{{ t('usage.title') }}</h1>
 
-    <template v-if="data">
+    <template v-if="store.data">
       <StatsUsageLimitGauges
-        v-if="data.rateLimits"
-        :rate-limits="data.rateLimits"
+        v-if="store.data.rateLimits"
+        :rate-limits="store.data.rateLimits"
       />
 
       <StatsUsageWindowGrid
-        :five-hour="data.windows.fiveHour"
-        :seven-day="data.windows.sevenDay"
-        :today="data.windows.today"
-        :month="data.windows.month"
+        :five-hour="store.data.windows.fiveHour"
+        :seven-day="store.data.windows.sevenDay"
+        :today="store.data.windows.today"
+        :month="store.data.windows.month"
       />
 
-      <StatsUsageBurnRate :burn-rate="data.burnRate" />
+      <StatsUsageBurnRate :burn-rate="store.data.burnRate" />
 
       <StatsUsageContextBreakdown
-        v-if="data.context.categories.length > 0"
-        :context="data.context"
+        v-if="store.data.context.categories.length > 0"
+        :context="store.data.context"
       />
     </template>
 

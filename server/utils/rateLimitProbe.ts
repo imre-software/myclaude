@@ -53,15 +53,22 @@ async function getValidToken(): Promise<string | null> {
   return token.accessToken
 }
 
-function parseUtilization(headers: Headers, prefix: string): { utilization: number, resetsAt: string | null } | null {
-  const raw = headers.get(`anthropic-ratelimit-unified-${prefix}-utilization`)
-  if (!raw) return null
+interface OAuthUsageResponse {
+  five_hour: { utilization: number, resets_at: string } | null
+  seven_day: { utilization: number, resets_at: string } | null
+  seven_day_sonnet: { utilization: number, resets_at: string } | null
+  seven_day_opus: { utilization: number, resets_at: string } | null
+  extra_usage: {
+    is_enabled: boolean
+    monthly_limit: number | null
+    used_credits: number | null
+    utilization: number | null
+  } | null
+}
 
-  const utilization = parseFloat(raw) * 100
-  const resetEpoch = headers.get(`anthropic-ratelimit-unified-${prefix}-reset`)
-  const resetsAt = resetEpoch ? new Date(parseInt(resetEpoch, 10) * 1000).toISOString() : null
-
-  return { utilization, resetsAt }
+function mapWindow(w: { utilization: number, resets_at: string } | null): { utilization: number, resetsAt: string | null } | null {
+  if (!w) return null
+  return { utilization: w.utilization, resetsAt: w.resets_at }
 }
 
 export function clearRateLimitCache() {
@@ -77,35 +84,34 @@ export async function fetchRateLimits(): Promise<RateLimitInfo | null> {
   if (!accessToken) return null
 
   try {
-    // Minimal 1-token inference call to read rate limit headers
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+    const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'anthropic-version': '2023-06-01',
         'anthropic-beta': 'oauth-2025-04-20',
-        'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1,
-        messages: [{ role: 'user', content: 'hi' }],
-      }),
     })
 
     if (!response.ok) return cachedResult?.data ?? null
 
-    const fiveHour = parseUtilization(response.headers, '5h')
-    const sevenDay = parseUtilization(response.headers, '7d')
+    const json = await response.json() as OAuthUsageResponse
+
+    const fiveHour = mapWindow(json.five_hour)
+    const sevenDay = mapWindow(json.seven_day)
 
     if (!fiveHour || !sevenDay) return cachedResult?.data ?? null
 
+    const extra = json.extra_usage
     const result: RateLimitInfo = {
       fiveHour,
       sevenDay,
-      sevenDaySonnet: parseUtilization(response.headers, '7d_sonnet'),
-      sevenDayOpus: parseUtilization(response.headers, '7d_opus'),
-      extraUsage: null,
+      sevenDaySonnet: mapWindow(json.seven_day_sonnet),
+      sevenDayOpus: mapWindow(json.seven_day_opus),
+      extraUsage: extra ? {
+        isEnabled: extra.is_enabled,
+        monthlyLimit: extra.monthly_limit,
+        usedCredits: extra.used_credits,
+        utilization: extra.utilization,
+      } : null,
     }
 
     cachedResult = { data: result, fetchedAt: Date.now() }
