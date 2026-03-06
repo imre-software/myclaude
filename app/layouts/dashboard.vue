@@ -6,11 +6,13 @@ const route = useRoute()
 const statsStore = useStatsStore()
 const settingsStore = useSettingsStore()
 const usageStore = useUsageStore()
+const notificationStore = useNotificationStore()
 
 onMounted(() => {
   statsStore.startSync()
   settingsStore.loadAll()
   usageStore.load()
+  notificationStore.init()
 })
 
 function handleRefresh() {
@@ -55,6 +57,12 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     icon: 'i-lucide-gauge',
     to: '/usage',
     active: route.path === '/usage',
+  },
+  {
+    label: t('nav.notifications'),
+    icon: 'i-lucide-bell',
+    to: '/notifications',
+    active: route.path === '/notifications',
   },
   {
     label: t('nav.settings'),

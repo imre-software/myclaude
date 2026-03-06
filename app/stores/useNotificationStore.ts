@@ -1,0 +1,127 @@
+import { invoke } from '@tauri-apps/api/core'
+import type {
+  NotificationSettings,
+  NotificationSettingsUpdate,
+} from '~/types/notifications'
+import { NOTIFICATION_DEFAULTS } from '~/types/notifications'
+
+export const useNotificationStore = defineStore('notifications', () => {
+  const settings = ref<NotificationSettings>({ ...NOTIFICATION_DEFAULTS })
+  const unreadCount = ref(0)
+  const isTauriAvailable = ref(false)
+  const permissionStatus = ref<'not-determined' | 'granted' | 'denied' | 'provisional' | 'unknown'>('not-determined')
+  let eventSource: EventSource | null = null
+
+  async function init() {
+    try {
+      settings.value = await $fetch<NotificationSettings>('/api/notifications/settings')
+    } catch {
+      settings.value = { ...NOTIFICATION_DEFAULTS }
+    }
+
+    isTauriAvailable.value = !!(window as Record<string, unknown>).__TAURI_INTERNALS__
+
+    if (isTauriAvailable.value) {
+      try {
+        const status = await invoke<string>('check_notification_permission')
+        permissionStatus.value = status as typeof permissionStatus.value
+
+        if (permissionStatus.value === 'not-determined' && settings.value.enabled) {
+          await requestPermission()
+        }
+      } catch {
+        permissionStatus.value = 'unknown'
+      }
+    } else {
+      permissionStatus.value = 'granted'
+    }
+
+    await loadUnreadCount()
+    connectSSE()
+  }
+
+  function connectSSE() {
+    if (eventSource) return
+
+    eventSource = new EventSource('/api/notifications/stream')
+
+    eventSource.onmessage = async (event) => {
+      try {
+        const notification = JSON.parse(event.data)
+        await sendNativeNotification(notification.title, notification.body)
+        unreadCount.value++
+      } catch {
+        // Malformed event
+      }
+    }
+
+    eventSource.onerror = () => {
+      // Reconnect after a delay
+      eventSource?.close()
+      eventSource = null
+      setTimeout(connectSSE, 5_000)
+    }
+  }
+
+  async function requestPermission(): Promise<boolean> {
+    if (!isTauriAvailable.value) return true
+
+    try {
+      const granted = await invoke<boolean>('request_notification_permission')
+      permissionStatus.value = granted ? 'granted' : 'denied'
+      return granted
+    } catch {
+      permissionStatus.value = 'unknown'
+      return false
+    }
+  }
+
+  async function sendNativeNotification(title: string, body: string, sound?: string) {
+    const resolvedSound = sound ?? settings.value.sound
+    if (isTauriAvailable.value) {
+      await invoke('send_notification', { title, body, sound: resolvedSound })
+    } else {
+      await $fetch('/api/notifications/send', {
+        method: 'POST',
+        body: { title, body, sound: resolvedSound },
+      })
+    }
+  }
+
+  async function updateSettings(partial: NotificationSettingsUpdate) {
+    settings.value = await $fetch<NotificationSettings>('/api/notifications/settings', {
+      method: 'PUT',
+      body: partial,
+    })
+  }
+
+  async function loadUnreadCount() {
+    try {
+      const history = await $fetch<Array<{ read: boolean }>>('/api/notifications/history?limit=100')
+      unreadCount.value = history.filter(n => !n.read).length
+    } catch {
+      unreadCount.value = 0
+    }
+  }
+
+  async function sendTestNotification(): Promise<{ ok: boolean, error?: string }> {
+    try {
+      await sendNativeNotification('Test Notification', 'Notifications are working correctly.')
+      return { ok: true }
+    } catch (err) {
+      if (import.meta.dev) console.error('[notifications] test failed:', err)
+      return { ok: false, error: String(err) }
+    }
+  }
+
+  return {
+    settings,
+    unreadCount,
+    permissionStatus,
+    init,
+    requestPermission,
+    updateSettings,
+    loadUnreadCount,
+    sendTestNotification,
+  }
+})

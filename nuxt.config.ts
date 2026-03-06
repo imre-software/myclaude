@@ -52,8 +52,17 @@ export default defineNuxtConfig({
   ignore: ['**/src-tauri/**'],
 
   nitro: {
+    output: {
+      publicDir: '.output/server/public',
+    },
     externals: {
       external: ['better-sqlite3'],
+    },
+    experimental: {
+      tasks: true,
+    },
+    scheduledTasks: {
+      '* * * * *': ['notifications:check'],
     },
     typescript: {
       tsConfig: {

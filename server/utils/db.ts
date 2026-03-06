@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs'
 const DATA_DIR = join(process.cwd(), '.data')
 const DB_PATH = join(DATA_DIR, 'claude-stats.db')
 
-const CURRENT_SCHEMA_VERSION = 3
+const CURRENT_SCHEMA_VERSION = 4
 
 let db: Database.Database | null = null
 
@@ -101,6 +101,33 @@ function ensureSchema(database: Database.Database): void {
       DELETE FROM file_daily_costs;
       DELETE FROM api_daily_costs;
       DELETE FROM api_sync_state;
+    `)
+  }
+
+  if (currentVersion < 4) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS notification_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    `)
+
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS notification_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL,
+        window_type TEXT,
+        threshold_level INTEGER,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        utilization REAL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+        read INTEGER NOT NULL DEFAULT 0
+      )
+    `)
+
+    database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_notification_history_created_at ON notification_history(created_at)
     `)
   }
 

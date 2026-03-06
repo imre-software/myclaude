@@ -1,13 +1,10 @@
 <script setup lang="ts">
 const { t } = useI18n()
-const { data, startAutoRefresh, stopAutoRefresh } = useUsageData()
+const { data } = useUsageData()
 
 definePageMeta({
   layout: 'dashboard',
 })
-
-onMounted(() => startAutoRefresh())
-onBeforeUnmount(() => stopAutoRefresh())
 </script>
 
 <template>

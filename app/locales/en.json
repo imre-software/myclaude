@@ -6,6 +6,7 @@
     "sessions": "Sessions",
     "projects": "Projects",
     "usage": "Usage & Limits",
+    "notifications": "Notifications",
     "settings": "Settings"
   },
   "overview": {
@@ -194,6 +195,29 @@
     "aiUpdatePromptLabel": "What should Claude change?",
     "aiUpdatePromptPlaceholder": "e.g. Add a section about error handling...",
     "update": "Update"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Get alerted when you approach rate limits so you never get caught off guard.",
+    "enableDesktop": "Enable desktop notifications",
+    "permissionNotDetermined": "Notification permission has not been requested yet.",
+    "permissionDenied": "Notification permission was denied. Enable it in macOS System Settings > Notifications > Claude Command.",
+    "permissionGranted": "Notifications are permitted.",
+    "requestPermission": "Allow notifications",
+    "thresholds": "Rate Limit Thresholds",
+    "thresholdsDesc": "Choose which utilization levels trigger an alert for each rate limit window.",
+    "fiveHourWindow": "5-hour window",
+    "sevenDayWindow": "7-day (all models)",
+    "sevenDaySonnetWindow": "7-day (Sonnet)",
+    "cooldown": "Cooldown period",
+    "sound": "Sound",
+    "presets": "Presets",
+    "custom": "Custom",
+    "customPlaceholder": "%",
+    "testButton": "Test notification",
+    "testSent": "Notification sent",
+    "testFailed": "Failed to send notification",
+    "settingsTab": "Settings"
   },
   "source": {
     "estimated": "Estimated",
