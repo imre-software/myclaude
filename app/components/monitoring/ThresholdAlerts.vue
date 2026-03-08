@@ -90,6 +90,10 @@ async function handleSoundChange(value: string) {
   await store.updateSettings({ sound: value })
 }
 
+async function handleToggleCloseToTray(value: boolean) {
+  await store.updateSettings({ closeToTray: value })
+}
+
 const toast = useToast()
 
 async function handleRequestPermission() {
@@ -119,6 +123,18 @@ async function handleTestNotification() {
       <USwitch
         :model-value="store.settings.enabled"
         @update:model-value="handleToggleEnabled"
+      />
+    </div>
+
+    <!-- Close to tray -->
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-base">{{ t('notifications.closeToTray') }}</p>
+        <p class="text-sm text-muted">{{ t('notifications.closeToTrayDesc') }}</p>
+      </div>
+      <USwitch
+        :model-value="store.settings.closeToTray"
+        @update:model-value="handleToggleCloseToTray"
       />
     </div>
 

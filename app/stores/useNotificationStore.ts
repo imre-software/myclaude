@@ -5,12 +5,40 @@ import type {
 } from '~/types/notifications'
 import { NOTIFICATION_DEFAULTS } from '~/types/notifications'
 
+async function emitUsageToTray(data: { fiveHour: number | null, sevenDay: number | null, sevenDaySonnet: number | null }) {
+  if (!(window as Record<string, unknown>).__TAURI_INTERNALS__) return
+  try {
+    await invoke('update_tray_usage', data)
+  } catch {
+    // Tauri not available
+  }
+}
+
 export const useNotificationStore = defineStore('notifications', () => {
   const settings = ref<NotificationSettings>({ ...NOTIFICATION_DEFAULTS })
   const unreadCount = ref(0)
   const isTauriAvailable = ref(false)
   const permissionStatus = ref<'not-determined' | 'granted' | 'denied' | 'provisional' | 'unknown'>('not-determined')
   let eventSource: EventSource | null = null
+
+  function listenForTrayRefresh() {
+    if (!isTauriAvailable.value) return
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen('tray-refresh', () => {
+        const usageStore = useUsageStore()
+        usageStore.hardRefresh()
+      })
+    })
+  }
+
+  async function syncCloseToTray() {
+    if (!isTauriAvailable.value) return
+    try {
+      await invoke('set_close_to_tray', { enabled: settings.value.closeToTray })
+    } catch {
+      // Tauri not available
+    }
+  }
 
   async function init() {
     try {
@@ -36,6 +64,8 @@ export const useNotificationStore = defineStore('notifications', () => {
       permissionStatus.value = 'granted'
     }
 
+    await syncCloseToTray()
+    listenForTrayRefresh()
     await loadUnreadCount()
     connectSSE()
   }
@@ -47,8 +77,12 @@ export const useNotificationStore = defineStore('notifications', () => {
 
     eventSource.onmessage = async (event) => {
       try {
-        const notification = JSON.parse(event.data)
-        await sendNativeNotification(notification.title, notification.body)
+        const data = JSON.parse(event.data)
+        if (data.type === 'usage-update') {
+          await emitUsageToTray(data)
+          return
+        }
+        await sendNativeNotification(data.title, data.body)
         unreadCount.value++
       } catch {
         // Malformed event
@@ -93,6 +127,9 @@ export const useNotificationStore = defineStore('notifications', () => {
       method: 'PUT',
       body: partial,
     })
+    if ('closeToTray' in partial) {
+      await syncCloseToTray()
+    }
   }
 
   async function loadUnreadCount() {

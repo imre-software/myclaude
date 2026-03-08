@@ -37,6 +37,16 @@ export default defineTask({
     // Cron runs hourly - fetch fresh data from the API each time
     const rateLimits = await fetchRateLimits()
 
+    // Push utilization to SSE so tray updates even when window is hidden
+    if (rateLimits) {
+      pushNotificationEvent({
+        type: 'usage-update',
+        fiveHour: rateLimits.fiveHour?.utilization ?? null,
+        sevenDay: rateLimits.sevenDay?.utilization ?? null,
+        sevenDaySonnet: rateLimits.sevenDaySonnet?.utilization ?? null,
+      })
+    }
+
     // Always record snapshots when rate limits are available, regardless of notification settings
     if (rateLimits) {
       const allWindows: Array<{ key: string, data: { utilization: number, resetsAt: string | null } | null }> = [

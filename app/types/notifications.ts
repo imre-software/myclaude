@@ -24,6 +24,7 @@ export interface NotificationSettings {
     start: string
     end: string
   }
+  closeToTray: boolean
 }
 
 export interface NotificationRecord {
@@ -60,4 +61,5 @@ export const NOTIFICATION_DEFAULTS: NotificationSettings = {
   sound: 'default',
   paceAlerts: { enabled: false, workDayHours: 8, workDaysPerWeek: 5 },
   quietHours: { enabled: false, start: '22:00', end: '08:00' },
+  closeToTray: true,
 }

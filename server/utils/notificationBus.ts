@@ -1,4 +1,4 @@
-type Listener = (event: NotificationEvent) => void
+type Listener = (event: BusEvent) => void
 
 export interface NotificationEvent {
   type: string
@@ -9,9 +9,18 @@ export interface NotificationEvent {
   body: string
 }
 
+export interface UsageUpdateEvent {
+  type: 'usage-update'
+  fiveHour: number | null
+  sevenDay: number | null
+  sevenDaySonnet: number | null
+}
+
+export type BusEvent = NotificationEvent | UsageUpdateEvent
+
 const listeners = new Set<Listener>()
 
-export function pushNotificationEvent(event: NotificationEvent): void {
+export function pushNotificationEvent(event: BusEvent): void {
   for (const listener of listeners) {
     listener(event)
   }

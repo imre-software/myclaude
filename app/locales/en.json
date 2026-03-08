@@ -240,7 +240,9 @@
     "paceInsufDetail": "Need a few more minutes of snapshots to calculate your pace.",
     "paceEnabled": "Send native alerts",
     "paceEnabledHint": "Fire a desktop notification when projected to exhaust before reset",
-    "paceHistory": "Recent pace alerts"
+    "paceHistory": "Recent pace alerts",
+    "closeToTray": "Close to tray",
+    "closeToTrayDesc": "Keep the app running in the system tray when you close the window."
   },
   "source": {
     "estimated": "Estimated",

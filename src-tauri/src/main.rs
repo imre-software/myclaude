@@ -7,13 +7,25 @@ use std::process::Child;
 #[cfg(not(debug_assertions))]
 use std::process::Command;
 use std::sync::Mutex;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri::WebviewUrl;
 use tauri::WebviewWindowBuilder;
+use tauri::menu::{MenuBuilder, MenuItem, MenuItemBuilder, PredefinedMenuItem};
+use tauri::tray::TrayIconBuilder;
 
 const SERVER_URL: &str = "http://localhost:3019";
 
 struct NitroServer(Mutex<Option<Child>>);
+
+/// Managed state: tray menu items for live utilization updates.
+struct TrayMenuItems {
+    five_hour: MenuItem<tauri::Wry>,
+    seven_day: MenuItem<tauri::Wry>,
+    seven_day_sonnet: MenuItem<tauri::Wry>,
+}
+
+/// Whether the app should minimize to tray on close instead of quitting.
+struct CloseToTray(Mutex<bool>);
 
 /// In dev mode, the binary runs outside a .app bundle. UNUserNotificationCenter
 /// requires a real .app bundle launched through LaunchServices. This function
@@ -179,18 +191,43 @@ fn send_notification(title: String, body: String, sound: Option<String>) -> Resu
     notifications::send(&title, &body, sound.as_deref())
 }
 
+#[tauri::command]
+fn set_close_to_tray(state: tauri::State<CloseToTray>, enabled: bool) {
+    *state.0.lock().unwrap() = enabled;
+}
+
+#[tauri::command]
+fn update_tray_usage(
+    items: tauri::State<TrayMenuItems>,
+    five_hour: Option<f64>,
+    seven_day: Option<f64>,
+    seven_day_sonnet: Option<f64>,
+) {
+    if let Some(v) = five_hour {
+        let _ = items.five_hour.set_text(format!("5h: {v:.0}%"));
+    }
+    if let Some(v) = seven_day {
+        let _ = items.seven_day.set_text(format!("7d: {v:.0}%"));
+    }
+    if let Some(v) = seven_day_sonnet {
+        let _ = items.seven_day_sonnet.set_text(format!("7d Sonnet: {v:.0}%"));
+    }
+}
+
 fn main() {
     #[cfg(all(target_os = "macos", debug_assertions))]
     reexec_inside_app_bundle();
 
     notifications::setup_delegate();
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             request_notification_permission,
             check_notification_permission,
             send_notification,
+            set_close_to_tray,
+            update_tray_usage,
         ])
         .setup(|app| {
             #[cfg(not(debug_assertions))]
@@ -220,6 +257,8 @@ fn main() {
                 wait_for_server();
             }
 
+            app.manage(CloseToTray(Mutex::new(true)));
+
             let url = WebviewUrl::External(SERVER_URL.parse().unwrap());
             WebviewWindowBuilder::new(app, "main", url)
                 .title("Claude Command")
@@ -228,19 +267,93 @@ fn main() {
                 .build()
                 .expect("failed to create window");
 
+            // Build tray menu
+            let show = MenuItemBuilder::with_id("show", "Show Dashboard").build(app)?;
+            let sep1 = PredefinedMenuItem::separator(app)?;
+            let five_h_item = MenuItemBuilder::with_id("five_hour", "5h: --%").enabled(false).build(app)?;
+            let seven_d_item = MenuItemBuilder::with_id("seven_day", "7d: --%").enabled(false).build(app)?;
+            let seven_d_sonnet_item = MenuItemBuilder::with_id("seven_day_sonnet", "7d Sonnet: --%").enabled(false).build(app)?;
+            let sep2 = PredefinedMenuItem::separator(app)?;
+            let refresh = MenuItemBuilder::with_id("refresh", "Refresh").build(app)?;
+            let sep3 = PredefinedMenuItem::separator(app)?;
+            let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+
+            let menu = MenuBuilder::new(app)
+                .items(&[&show, &sep1, &five_h_item, &seven_d_item, &seven_d_sonnet_item, &sep2, &refresh, &sep3, &quit])
+                .build()?;
+
+            app.manage(TrayMenuItems {
+                five_hour: five_h_item,
+                seven_day: seven_d_item,
+                seven_day_sonnet: seven_d_sonnet_item,
+            });
+
+            let icon = app.default_window_icon().cloned()
+                .unwrap_or_else(|| tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png")).expect("failed to load tray icon"));
+
+            TrayIconBuilder::new()
+                .icon(icon)
+                .menu(&menu)
+                .tooltip("Claude Command")
+                .on_menu_event(|app, event| {
+                    match event.id().as_ref() {
+                        "show" => {
+                            if let Some(w) = app.get_webview_window("main") {
+                                let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                                let _ = w.show();
+                                let _ = w.set_focus();
+                            }
+                        }
+                        "refresh" => {
+                            let _ = app.emit("tray-refresh", ());
+                        }
+                        "quit" => {
+                            // Kill Nitro server before exiting
+                            if let Some(state) = app.try_state::<NitroServer>() {
+                                if let Ok(mut guard) = state.0.lock() {
+                                    if let Some(ref mut child) = *guard {
+                                        let _ = child.kill();
+                                    }
+                                }
+                            }
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .build(app)?;
+
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::Destroyed = event {
-                if let Some(state) = window.try_state::<NitroServer>() {
-                    if let Ok(mut guard) = state.0.lock() {
-                        if let Some(ref mut child) = *guard {
-                            let _ = child.kill();
-                        }
-                    }
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let close_to_tray = window.try_state::<CloseToTray>()
+                    .map(|s| *s.0.lock().unwrap())
+                    .unwrap_or(false);
+                if close_to_tray {
+                    let _ = window.hide();
+                    let _ = window.app_handle().set_activation_policy(tauri::ActivationPolicy::Accessory);
+                    api.prevent_close();
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app_handle, event| {
+        if let tauri::RunEvent::ExitRequested { ref api, .. } = event {
+            // Prevent exit when all windows are hidden - keep running in tray
+            api.prevent_exit();
+        }
+        if let tauri::RunEvent::Exit = event {
+            // Clean up Nitro server on actual exit
+            if let Some(state) = app_handle.try_state::<NitroServer>() {
+                if let Ok(mut guard) = state.0.lock() {
+                    if let Some(ref mut child) = *guard {
+                        let _ = child.kill();
+                    }
+                }
+            }
+        }
+    });
 }
