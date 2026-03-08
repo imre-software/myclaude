@@ -6,9 +6,7 @@ export interface PaceWindowInfo {
   ratePerHour: number | null
   exhaustsAt: string | null
   willExhaust: boolean
-  status: 'on-track' | 'warning' | 'critical' | 'insufficient-data' | 'no-data'
-  snapshotCount: number
-  dataSpanMinutes: number
+  status: 'on-track' | 'warning' | 'critical'
 }
 
 export interface PaceApiResponse {
@@ -22,8 +20,8 @@ const WINDOW_LABELS: Record<string, string> = {
   sevenDayOpus: 'Current week (Opus only)',
 }
 
-export default defineEventHandler((): PaceApiResponse => {
-  const rateLimits = getCachedRateLimits()
+export default defineEventHandler(async (): Promise<PaceApiResponse> => {
+  const rateLimits = await fetchRateLimits()
 
   const windowKeys: Array<{ key: string, getData: () => { utilization: number, resetsAt: string | null } | null }> = [
     { key: 'fiveHour', getData: () => rateLimits?.fiveHour ?? null },
@@ -36,39 +34,11 @@ export default defineEventHandler((): PaceApiResponse => {
 
   for (const { key, getData } of windowKeys) {
     const live = getData()
-    const history = getUtilizationHistory(key)
 
-    const first = history[0]
-    const last = history[history.length - 1]
-    let spanMinutes = 0
-    if (first && last) {
-      spanMinutes = Math.round(
-        (new Date(last.recordedAt).getTime() - new Date(first.recordedAt).getTime()) / 60_000,
-      )
-    }
+    if (!live) continue
 
-    if (!live) {
-      // Only include windows that have either live data or history
-      if (history.length > 0) {
-        windows.push({
-          key,
-          label: WINDOW_LABELS[key] ?? key,
-          utilization: last?.utilization ?? null,
-          resetsAt: last?.resetsAt ?? null,
-          ratePerHour: null,
-          exhaustsAt: null,
-          willExhaust: false,
-          status: 'no-data',
-          snapshotCount: history.length,
-          dataSpanMinutes: spanMinutes,
-        })
-      }
-      continue
-    }
+    const pace = calculatePace(key, live.utilization, live.resetsAt)
 
-    const pace = calculatePace(history, live.utilization, live.resetsAt)
-
-    // Compute exhaustion timestamp
     let exhaustsAt: string | null = null
     if (pace.exhaustsInHours !== null && pace.willExhaust) {
       exhaustsAt = new Date(Date.now() + pace.exhaustsInHours * 3_600_000).toISOString()
@@ -83,8 +53,6 @@ export default defineEventHandler((): PaceApiResponse => {
       exhaustsAt,
       willExhaust: pace.willExhaust,
       status: pace.status,
-      snapshotCount: history.length,
-      dataSpanMinutes: spanMinutes,
     })
   }
 

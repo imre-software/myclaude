@@ -6,7 +6,24 @@ export function getNotificationSettings(): NotificationSettings {
   const row = db.prepare('SELECT value FROM notification_settings WHERE key = ?').get('settings') as { value: string } | undefined
   if (!row) return { ...NOTIFICATION_DEFAULTS }
   try {
-    return { ...NOTIFICATION_DEFAULTS, ...JSON.parse(row.value) }
+    const saved = JSON.parse(row.value)
+    return {
+      ...NOTIFICATION_DEFAULTS,
+      ...saved,
+      thresholds: {
+        ...NOTIFICATION_DEFAULTS.thresholds,
+        ...saved.thresholds,
+        fiveHour: { ...NOTIFICATION_DEFAULTS.thresholds.fiveHour, ...saved.thresholds?.fiveHour },
+        sevenDay: { ...NOTIFICATION_DEFAULTS.thresholds.sevenDay, ...saved.thresholds?.sevenDay },
+        sevenDaySonnet: { ...NOTIFICATION_DEFAULTS.thresholds.sevenDaySonnet, ...saved.thresholds?.sevenDaySonnet },
+      },
+      paceAlerts: {
+        ...NOTIFICATION_DEFAULTS.paceAlerts,
+        ...saved.paceAlerts,
+        windows: { ...NOTIFICATION_DEFAULTS.paceAlerts.windows, ...saved.paceAlerts?.windows },
+      },
+      quietHours: { ...NOTIFICATION_DEFAULTS.quietHours, ...saved.quietHours },
+    }
   } catch {
     return { ...NOTIFICATION_DEFAULTS }
   }

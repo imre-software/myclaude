@@ -46,8 +46,7 @@ export default defineEventHandler(async (event): Promise<UsageResponse> => {
   if (rateLimits) {
     const computeWindowPace = (windowType: string, window: { utilization: number, resetsAt: string | null } | null) => {
       if (!window) return null
-      const history = getUtilizationHistory(windowType)
-      return calculatePace(history, window.utilization, window.resetsAt)
+      return calculatePace(windowType, window.utilization, window.resetsAt)
     }
 
     pace = {

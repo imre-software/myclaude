@@ -115,43 +115,53 @@ export default defineTask({
       }
     }
 
-    // Pace alerts
-    if (settings.paceAlerts.enabled) {
-      const paceWindows: Array<{ key: string, label: string, data: { utilization: number, resetsAt: string | null } | null }> = [
-        { key: 'fiveHour', label: '5-hour', data: rateLimits.fiveHour },
-        { key: 'sevenDay', label: '7-day (all models)', data: rateLimits.sevenDay },
-        { key: 'sevenDaySonnet', label: '7-day (Sonnet)', data: rateLimits.sevenDaySonnet },
-        { key: 'sevenDayOpus', label: '7-day (Opus)', data: rateLimits.sevenDayOpus },
-      ]
+    // Pace alerts - fire when projected usage at reset exceeds configured levels
+    if (settings.paceAlerts.enabled && settings.paceAlerts.levels.length > 0) {
+      const paceWindowMap: Record<string, string> = {
+        fiveHour: '5-hour',
+        sevenDay: '7-day (all models)',
+        sevenDaySonnet: '7-day (Sonnet)',
+      }
+      const paceWindowData: Record<string, { utilization: number, resetsAt: string | null } | null> = {
+        fiveHour: rateLimits.fiveHour,
+        sevenDay: rateLimits.sevenDay,
+        sevenDaySonnet: rateLimits.sevenDaySonnet,
+      }
 
-      for (const { key, label, data } of paceWindows) {
+      for (const [key, label] of Object.entries(paceWindowMap)) {
+        if (!settings.paceAlerts.windows[key as NotificationWindowType]) continue
+        const data = paceWindowData[key]
         if (!data) continue
 
-        const history = getUtilizationHistory(key)
-        const pace = calculatePace(history, data.utilization, data.resetsAt)
+        const pace = calculatePace(key, data.utilization, data.resetsAt)
+        const projected = Math.round(pace.projectedAtReset)
 
-        if (pace.willExhaust && pace.exhaustsInHours !== null && pace.resetsInHours !== null) {
-          const debounceKey = `pace:${key}`
+        for (const level of settings.paceAlerts.levels) {
+          if (projected < level) continue
+
+          const debounceKey = `pace:${key}:${level}`
           const entry = debounce[debounceKey]
           const cooldownMs = settings.cooldownMinutes * 60_000
           const withinCooldown = entry && (Date.now() - entry.lastFiredAt) < cooldownMs
+          const hasNotDroppedBelow = entry && entry.lastUtilization >= level
 
-          if (!withinCooldown) {
-            const exhaustLabel = pace.exhaustsInHours < 1
-              ? `${Math.round(pace.exhaustsInHours * 60)}min`
-              : `${pace.exhaustsInHours.toFixed(1)}h`
-            const resetLabel = pace.resetsInHours < 1
-              ? `${Math.round(pace.resetsInHours * 60)}min`
-              : `${pace.resetsInHours.toFixed(1)}h`
-            const title = `${label} pace alert`
-            const body = `At current rate, exhausts in ~${exhaustLabel} (resets in ${resetLabel})`
+          if (!withinCooldown && !hasNotDroppedBelow) {
+            const title = `${label} - on pace for ${projected}%`
+            const body = level >= 100
+              ? `At current rate, you'll exhaust this limit before it resets.`
+              : `At current rate, you'll use ${projected}% of your ${label} limit by reset.`
 
-            pending.push({ type: 'pace', windowType: key, level: 0, utilization: data.utilization, title, body })
+            pending.push({ type: 'pace', windowType: key, level, utilization: data.utilization, title, body })
 
             debounce[debounceKey] = {
               lastFiredAt: Date.now(),
-              lastUtilization: data.utilization,
+              lastUtilization: projected,
             }
+          }
+
+          debounce[debounceKey] = {
+            lastFiredAt: debounce[debounceKey]?.lastFiredAt ?? 0,
+            lastUtilization: projected,
           }
         }
       }

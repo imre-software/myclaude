@@ -16,8 +16,12 @@ export interface NotificationSettings {
   sound: string
   paceAlerts: {
     enabled: boolean
-    workDayHours: number
-    workDaysPerWeek: number
+    levels: number[]
+    windows: {
+      fiveHour: boolean
+      sevenDay: boolean
+      sevenDaySonnet: boolean
+    }
   }
   quietHours: {
     enabled: boolean
@@ -59,7 +63,11 @@ export const NOTIFICATION_DEFAULTS: NotificationSettings = {
   },
   cooldownMinutes: 30,
   sound: 'default',
-  paceAlerts: { enabled: false, workDayHours: 8, workDaysPerWeek: 5 },
+  paceAlerts: {
+    enabled: true,
+    levels: [80, 90],
+    windows: { fiveHour: true, sevenDay: true, sevenDaySonnet: true },
+  },
   quietHours: { enabled: false, start: '22:00', end: '08:00' },
   closeToTray: true,
 }

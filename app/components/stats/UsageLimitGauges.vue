@@ -97,7 +97,7 @@ const gauges = computed<GaugeItem[]>(() => {
           :color="gaugeColor(gauge.utilization)"
           size="md"
         />
-        <div v-if="gauge.pace && gauge.pace.status !== 'insufficient-data'" class="flex items-center gap-1.5">
+        <div v-if="gauge.pace" class="flex items-center gap-1.5">
           <template v-if="gauge.pace.willExhaust && gauge.pace.exhaustsInHours !== null">
             <UIcon
               :name="gauge.pace.status === 'critical' ? 'i-lucide-alert-triangle' : 'i-lucide-triangle-alert'"

@@ -1,8 +1,18 @@
 <script setup lang="ts">
-import type { NotificationRecord } from '~/types/notifications'
+import type { NotificationRecord, NotificationWindowType } from '~/types/notifications'
 
 const { t } = useI18n()
 const store = useNotificationStore()
+
+const presetLevels = [70, 80, 90, 100]
+
+const windowConfigs: Array<{ key: NotificationWindowType, label: string }> = [
+  { key: 'fiveHour', label: t('notifications.fiveHourWindow') },
+  { key: 'sevenDay', label: t('notifications.sevenDayWindow') },
+  { key: 'sevenDaySonnet', label: t('notifications.sevenDaySonnetWindow') },
+]
+
+const customLevelInput = ref('')
 
 interface PaceWindowInfo {
   key: string
@@ -12,9 +22,7 @@ interface PaceWindowInfo {
   ratePerHour: number | null
   exhaustsAt: string | null
   willExhaust: boolean
-  status: 'on-track' | 'warning' | 'critical' | 'insufficient-data' | 'no-data'
-  snapshotCount: number
-  dataSpanMinutes: number
+  status: 'on-track' | 'warning' | 'critical'
 }
 
 const windows = ref<PaceWindowInfo[]>([])
@@ -78,8 +86,7 @@ function statusLabel(status: PaceWindowInfo['status']): string {
   if (status === 'critical') return t('notifications.paceCritical')
   if (status === 'warning') return t('notifications.paceWarning')
   if (status === 'on-track') return t('usage.paceOnTrack')
-  if (status === 'insufficient-data') return t('notifications.paceInsufficient')
-  return t('notifications.paceNoLiveData')
+  return t('usage.paceOnTrack')
 }
 
 function formatHistoryTime(createdAt: string): string {
@@ -90,8 +97,42 @@ function formatHistoryTime(createdAt: string): string {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + timePart
 }
 
+const sortedLevels = computed(() => [...store.settings.paceAlerts.levels].sort((a, b) => a - b))
+const customLevels = computed(() => sortedLevels.value.filter(l => !presetLevels.includes(l)))
+
 async function handleTogglePaceEnabled(value: boolean) {
   await store.updateSettings({ paceAlerts: { enabled: value } })
+}
+
+async function handleToggleWindow(key: NotificationWindowType, value: boolean) {
+  await store.updateSettings({
+    paceAlerts: { windows: { ...store.settings.paceAlerts.windows, [key]: value } },
+  })
+}
+
+async function toggleLevel(level: number) {
+  const current = store.settings.paceAlerts.levels
+  const levels = current.includes(level)
+    ? current.filter(l => l !== level)
+    : [...current, level].sort((a, b) => a - b)
+  await store.updateSettings({ paceAlerts: { levels } })
+}
+
+async function handleRemoveLevel(level: number) {
+  const levels = store.settings.paceAlerts.levels.filter(l => l !== level)
+  await store.updateSettings({ paceAlerts: { levels } })
+}
+
+async function handleAddCustomLevel() {
+  const value = Number(customLevelInput.value)
+  if (!Number.isInteger(value) || value < 1 || value > 100) return
+  if (store.settings.paceAlerts.levels.includes(value)) {
+    customLevelInput.value = ''
+    return
+  }
+  const levels = [...store.settings.paceAlerts.levels, value].sort((a, b) => a - b)
+  await store.updateSettings({ paceAlerts: { levels } })
+  customLevelInput.value = ''
 }
 </script>
 
@@ -158,10 +199,6 @@ async function handleTogglePaceEnabled(value: boolean) {
             </span>
           </template>
 
-          <template v-if="win.snapshotCount > 0">
-            <span class="text-muted">{{ t('notifications.paceDataCollected') }}</span>
-            <span class="text-end">{{ win.snapshotCount }} snapshots ({{ win.dataSpanMinutes }} min)</span>
-          </template>
         </div>
 
         <!-- Verdict -->
@@ -170,9 +207,6 @@ async function handleTogglePaceEnabled(value: boolean) {
         </p>
         <p v-else-if="win.willExhaust && win.exhaustsAt" class="text-sm" :class="win.status === 'critical' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'">
           {{ t('notifications.paceExhaustDetail', { time: formatDateTime(win.exhaustsAt) }) }}
-        </p>
-        <p v-else-if="win.status === 'insufficient-data'" class="text-sm text-muted">
-          {{ t('notifications.paceInsufDetail') }}
         </p>
       </div>
     </div>
@@ -194,6 +228,82 @@ async function handleTogglePaceEnabled(value: boolean) {
         @update:model-value="handleTogglePaceEnabled"
       />
     </div>
+
+    <!-- Pace alert configuration -->
+    <template v-if="store.settings.paceAlerts.enabled">
+      <!-- Projected usage levels -->
+      <div class="flex flex-col gap-3">
+        <div>
+          <p class="text-base font-medium">{{ t('notifications.paceProjectedLevels') }}</p>
+          <p class="text-sm text-muted">{{ t('notifications.paceProjectedLevelsDesc') }}</p>
+        </div>
+
+        <div>
+          <p class="text-sm text-muted mb-1.5">{{ t('notifications.presets') }}</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <UBadge
+              v-for="level in presetLevels"
+              :key="level"
+              :variant="store.settings.paceAlerts.levels.includes(level) ? 'solid' : 'outline'"
+              class="cursor-pointer select-none"
+              @click="toggleLevel(level)"
+            >
+              {{ level }}%
+            </UBadge>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-sm text-muted mb-1.5">{{ t('notifications.custom') }}</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <UBadge
+              v-for="level in customLevels"
+              :key="'custom-' + level"
+              variant="solid"
+              class="cursor-pointer select-none"
+              @click="handleRemoveLevel(level)"
+            >
+              {{ level }}%
+              <UIcon name="i-lucide-x" class="ms-0.5 size-3" />
+            </UBadge>
+            <div class="flex items-center gap-1">
+              <UInput
+                v-model="customLevelInput"
+                type="number"
+                :min="1"
+                :max="100"
+                :placeholder="t('notifications.customPlaceholder')"
+                class="w-20"
+                size="xs"
+                @keyup.enter="handleAddCustomLevel"
+              />
+              <UButton
+                icon="i-lucide-plus"
+                variant="ghost"
+                size="xs"
+                @click="handleAddCustomLevel"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Per-window toggles -->
+      <div class="flex flex-col gap-3">
+        <div>
+          <p class="text-base font-medium">{{ t('notifications.paceWindows') }}</p>
+          <p class="text-sm text-muted">{{ t('notifications.paceWindowsDesc') }}</p>
+        </div>
+
+        <div v-for="win in windowConfigs" :key="win.key" class="flex items-center justify-between">
+          <p class="text-base">{{ win.label }}</p>
+          <USwitch
+            :model-value="store.settings.paceAlerts.windows[win.key]"
+            @update:model-value="handleToggleWindow(win.key, $event)"
+          />
+        </div>
+      </div>
+    </template>
 
     <!-- Pace alert history -->
     <template v-if="paceHistory.length > 0">

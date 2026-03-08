@@ -64,13 +64,12 @@ export interface ContextBreakdown {
 
 export interface PaceProjection {
   currentRatePerHour: number
+  projectedAtReset: number
   exhaustsInHours: number | null
   resetsInHours: number | null
   safeRatePerHour: number | null
   willExhaust: boolean
-  status: 'on-track' | 'warning' | 'critical' | 'insufficient-data'
-  dataSpanMinutes: number
-  snapshotCount: number
+  status: 'on-track' | 'warning' | 'critical'
 }
 
 export interface PaceInfo {

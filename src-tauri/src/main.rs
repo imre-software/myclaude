@@ -299,7 +299,22 @@ fn main() {
                     match event.id().as_ref() {
                         "show" => {
                             if let Some(w) = app.get_webview_window("main") {
-                                let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                                #[cfg(target_os = "macos")]
+                                {
+                                    use objc2::{AnyThread, MainThreadMarker};
+                                    use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSImage};
+                                    use objc2_foundation::NSData;
+                                    let mtm = MainThreadMarker::new().unwrap();
+                                    let ns_app = NSApplication::sharedApplication(mtm);
+                                    ns_app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
+                                    // Restore dock icon - macOS loses it after Accessory -> Regular switch
+                                    let icon_bytes = include_bytes!("../icons/128x128@2x.png");
+                                    let data = NSData::with_bytes(icon_bytes);
+                                    if let Some(icon) = NSImage::initWithData(NSImage::alloc(), &data) {
+                                        unsafe { ns_app.setApplicationIconImage(Some(&icon)); }
+                                    }
+                                    ns_app.activate();
+                                }
                                 let _ = w.show();
                                 let _ = w.set_focus();
                             }
@@ -332,7 +347,14 @@ fn main() {
                     .unwrap_or(false);
                 if close_to_tray {
                     let _ = window.hide();
-                    let _ = window.app_handle().set_activation_policy(tauri::ActivationPolicy::Accessory);
+                    #[cfg(target_os = "macos")]
+                    {
+                        use objc2::MainThreadMarker;
+                        use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy};
+                        let mtm = MainThreadMarker::new().unwrap();
+                        let ns_app = NSApplication::sharedApplication(mtm);
+                        ns_app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
+                    }
                     api.prevent_close();
                 }
             }
