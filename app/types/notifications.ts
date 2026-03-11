@@ -33,6 +33,12 @@ export interface NotificationSettings {
     enabled: boolean
     phoneNumber: string
   }
+  telegram: {
+    enabled: boolean
+    botToken: string
+    chatId: string
+    botName: string
+  }
 }
 
 export interface NotificationRecord {
@@ -47,11 +53,12 @@ export interface NotificationRecord {
   read: boolean
 }
 
-export type NotificationSettingsUpdate = Partial<Omit<NotificationSettings, 'thresholds' | 'paceAlerts' | 'quietHours' | 'whatsapp'>> & {
+export type NotificationSettingsUpdate = Partial<Omit<NotificationSettings, 'thresholds' | 'paceAlerts' | 'quietHours' | 'whatsapp' | 'telegram'>> & {
   thresholds?: Partial<Record<NotificationWindowType, Partial<ThresholdConfig>>>
   paceAlerts?: Partial<NotificationSettings['paceAlerts']>
   quietHours?: Partial<NotificationSettings['quietHours']>
   whatsapp?: Partial<NotificationSettings['whatsapp']>
+  telegram?: Partial<NotificationSettings['telegram']>
 }
 
 export interface DebounceEntry {
@@ -78,5 +85,11 @@ export const NOTIFICATION_DEFAULTS: NotificationSettings = {
   whatsapp: {
     enabled: false,
     phoneNumber: '',
+  },
+  telegram: {
+    enabled: false,
+    botToken: '',
+    chatId: '',
+    botName: '',
   },
 }

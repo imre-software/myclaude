@@ -19,6 +19,9 @@ export default defineEventHandler(async (event) => {
   if (body.quietHours) {
     merged.quietHours = { ...current.quietHours, ...body.quietHours }
   }
+  if (body.telegram) {
+    merged.telegram = { ...current.telegram, ...body.telegram }
+  }
 
   saveNotificationSettings(merged)
   return merged

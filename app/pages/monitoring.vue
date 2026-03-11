@@ -13,6 +13,7 @@ const tabItems = computed<TabsItem[]>(() => [
   { label: t('notifications.thresholdAlertsTab'), icon: 'i-lucide-bell', value: 'thresholds', slot: 'thresholds' },
   { label: t('notifications.paceAlerts'), icon: 'i-lucide-trending-up', value: 'pace', slot: 'pace' },
   { label: t('whatsapp.tab'), icon: 'i-lucide-message-circle', value: 'whatsapp', slot: 'whatsapp' },
+  { label: t('telegram.tab'), icon: 'i-lucide-send', value: 'telegram', slot: 'telegram' },
 ])
 </script>
 
@@ -42,6 +43,12 @@ const tabItems = computed<TabsItem[]>(() => [
       <template #whatsapp>
         <div class="py-4">
           <MonitoringWhatsAppConnect />
+        </div>
+      </template>
+
+      <template #telegram>
+        <div class="py-4">
+          <MonitoringTelegramConnect />
         </div>
       </template>
     </UTabs>

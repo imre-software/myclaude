@@ -4,6 +4,7 @@ import type {
   NotificationSettingsUpdate,
 } from '~/types/notifications'
 import type { WhatsAppStatus } from '~/types/whatsapp'
+import type { TelegramStatus } from '~/types/telegram'
 import { NOTIFICATION_DEFAULTS } from '~/types/notifications'
 
 async function emitUsageToTray(data: { fiveHour: number | null, sevenDay: number | null, sevenDaySonnet: number | null }) {
@@ -24,6 +25,11 @@ export const useNotificationStore = defineStore('notifications', () => {
     connection: 'disconnected',
     phoneNumber: '',
     queueStats: { pending: 0, failed: 0 },
+  })
+  const telegramStatus = ref<TelegramStatus>({
+    connected: false,
+    botName: '',
+    chatId: '',
   })
   let eventSource: EventSource | null = null
 
@@ -75,11 +81,20 @@ export const useNotificationStore = defineStore('notifications', () => {
     await loadUnreadCount()
     connectSSE()
     await loadWhatsAppStatus()
+    await loadTelegramStatus()
   }
 
   async function loadWhatsAppStatus() {
     try {
       whatsappStatus.value = await $fetch<WhatsAppStatus>('/api/whatsapp/status')
+    } catch {
+      // Keep default
+    }
+  }
+
+  async function loadTelegramStatus() {
+    try {
+      telegramStatus.value = await $fetch<TelegramStatus>('/api/telegram/status')
     } catch {
       // Keep default
     }
@@ -171,11 +186,13 @@ export const useNotificationStore = defineStore('notifications', () => {
     unreadCount,
     permissionStatus,
     whatsappStatus,
+    telegramStatus,
     init,
     requestPermission,
     updateSettings,
     loadUnreadCount,
     loadWhatsAppStatus,
+    loadTelegramStatus,
     sendTestNotification,
   }
 })
