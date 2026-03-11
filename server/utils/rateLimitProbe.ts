@@ -5,6 +5,7 @@ import type { RateLimitInfo } from '~~/app/types/usage'
 const execFileAsync = promisify(execFile)
 
 let cachedResult: { data: RateLimitInfo, fetchedAt: number, rateLimited?: boolean } | null = null
+let fetchInFlight: Promise<RateLimitInfo | null> | null = null
 let cachedToken: { accessToken: string, expiresAt: number } | null = null
 
 // Anthropic's /api/oauth/usage has ~5 requests per token before 429.
@@ -27,7 +28,7 @@ function persistToDb(data: RateLimitInfo): void {
   }
 }
 
-function loadFromDb(): RateLimitInfo | null {
+function loadFromDb(): { data: RateLimitInfo, savedAt: number } | null {
   try {
     const db = getDb()
     const row = db.prepare(
@@ -35,7 +36,7 @@ function loadFromDb(): RateLimitInfo | null {
     ).get(DB_CACHE_KEY) as { value: string } | undefined
     if (!row) return null
     const parsed = JSON.parse(row.value) as { data: RateLimitInfo, savedAt: number }
-    return parsed.data
+    return parsed
   } catch {
     return null
   }
@@ -117,7 +118,7 @@ export function clearRateLimitCache() {
  * Falls back to SQLite if in-memory cache is empty.
  */
 export function getCachedRateLimits(): RateLimitInfo | null {
-  return cachedResult?.data ?? loadFromDb()
+  return cachedResult?.data ?? loadFromDb()?.data ?? null
 }
 
 /**
@@ -151,7 +152,7 @@ function parseResponse(json: OAuthUsageResponse): RateLimitInfo | null {
  * Returns the best available fallback: in-memory cache, then SQLite.
  */
 function getFallback(): RateLimitInfo | null {
-  return cachedResult?.data ?? loadFromDb()
+  return cachedResult?.data ?? loadFromDb()?.data ?? null
 }
 
 /**
@@ -160,12 +161,7 @@ function getFallback(): RateLimitInfo | null {
  * On success, persists to both in-memory cache and SQLite so
  * data survives server restarts and 429 storms.
  */
-export async function fetchRateLimits(): Promise<RateLimitInfo | null> {
-  // Serve from in-memory cache if fresh
-  if (cachedResult && (Date.now() - cachedResult.fetchedAt) < CACHE_TTL) {
-    return cachedResult.data
-  }
-
+async function fetchFromApi(): Promise<RateLimitInfo | null> {
   const accessToken = await getValidToken()
   if (!accessToken) return getFallback()
 
@@ -202,5 +198,35 @@ export async function fetchRateLimits(): Promise<RateLimitInfo | null> {
     return result
   } catch {
     return getFallback()
+  } finally {
+    fetchInFlight = null
   }
+}
+
+export async function fetchRateLimits(): Promise<RateLimitInfo | null> {
+  // Serve from in-memory cache if fresh
+  if (cachedResult && (Date.now() - cachedResult.fetchedAt) < CACHE_TTL) {
+    return cachedResult.data
+  }
+
+  // On cold start: if we have DB data, return it immediately.
+  // Only trigger a background API refresh if the data is older than 1 hour.
+  if (!cachedResult) {
+    const dbEntry = loadFromDb()
+    if (dbEntry) {
+      const ageMs = Date.now() - dbEntry.savedAt
+      const ONE_HOUR = 3_600_000
+      cachedResult = { data: dbEntry.data, fetchedAt: dbEntry.savedAt, rateLimited: false }
+      if (ageMs > ONE_HOUR && !fetchInFlight) {
+        fetchInFlight = fetchFromApi()
+      }
+      return dbEntry.data
+    }
+  }
+
+  // No cache at all, or cache is stale - fetch synchronously
+  if (!fetchInFlight) {
+    fetchInFlight = fetchFromApi()
+  }
+  return fetchInFlight
 }

@@ -29,6 +29,10 @@ export interface NotificationSettings {
     end: string
   }
   closeToTray: boolean
+  whatsapp: {
+    enabled: boolean
+    phoneNumber: string
+  }
 }
 
 export interface NotificationRecord {
@@ -43,10 +47,11 @@ export interface NotificationRecord {
   read: boolean
 }
 
-export type NotificationSettingsUpdate = Partial<Omit<NotificationSettings, 'thresholds' | 'paceAlerts' | 'quietHours'>> & {
+export type NotificationSettingsUpdate = Partial<Omit<NotificationSettings, 'thresholds' | 'paceAlerts' | 'quietHours' | 'whatsapp'>> & {
   thresholds?: Partial<Record<NotificationWindowType, Partial<ThresholdConfig>>>
   paceAlerts?: Partial<NotificationSettings['paceAlerts']>
   quietHours?: Partial<NotificationSettings['quietHours']>
+  whatsapp?: Partial<NotificationSettings['whatsapp']>
 }
 
 export interface DebounceEntry {
@@ -70,4 +75,8 @@ export const NOTIFICATION_DEFAULTS: NotificationSettings = {
   },
   quietHours: { enabled: false, start: '22:00', end: '08:00' },
   closeToTray: true,
+  whatsapp: {
+    enabled: false,
+    phoneNumber: '',
+  },
 }

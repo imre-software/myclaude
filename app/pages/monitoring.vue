@@ -12,6 +12,7 @@ const activeTab = ref('thresholds')
 const tabItems = computed<TabsItem[]>(() => [
   { label: t('notifications.thresholdAlertsTab'), icon: 'i-lucide-bell', value: 'thresholds', slot: 'thresholds' },
   { label: t('notifications.paceAlerts'), icon: 'i-lucide-trending-up', value: 'pace', slot: 'pace' },
+  { label: t('whatsapp.tab'), icon: 'i-lucide-message-circle', value: 'whatsapp', slot: 'whatsapp' },
 ])
 </script>
 
@@ -35,6 +36,12 @@ const tabItems = computed<TabsItem[]>(() => [
       <template #pace>
         <div class="py-4">
           <MonitoringPaceAlerts />
+        </div>
+      </template>
+
+      <template #whatsapp>
+        <div class="py-4">
+          <MonitoringWhatsAppConnect />
         </div>
       </template>
     </UTabs>

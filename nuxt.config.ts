@@ -19,6 +19,7 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     'nuxt-charts',
     '@nuxtjs/i18n',
+    'nuxt-phone-input',
   ],
 
   i18n: {
@@ -48,6 +49,18 @@ export default defineNuxtConfig({
     },
   },
 
+  build: {
+    transpile: ['nuxt-phone-input'],
+  },
+
+  // Ensure Nuxt auto-imports (ref, computed, watch, etc.) are applied to
+  // the linked nuxt-phone-input module's .vue files
+  imports: {
+    transform: {
+      include: [/nuxt-phone-input/],
+    },
+  },
+
   // Ignore Tauri's Rust source
   ignore: ['**/src-tauri/**'],
 
@@ -56,7 +69,7 @@ export default defineNuxtConfig({
       publicDir: '.output/server/public',
     },
     externals: {
-      external: ['better-sqlite3'],
+      external: ['better-sqlite3', '@whiskeysockets/baileys'],
     },
     experimental: {
       tasks: true,

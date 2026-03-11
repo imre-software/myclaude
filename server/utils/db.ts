@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs'
 const DATA_DIR = join(process.cwd(), '.data')
 const DB_PATH = join(DATA_DIR, 'claude-stats.db')
 
-const CURRENT_SCHEMA_VERSION = 5
+const CURRENT_SCHEMA_VERSION = 6
 
 let db: Database.Database | null = null
 
@@ -145,6 +145,32 @@ function ensureSchema(database: Database.Database): void {
     database.exec(`
       CREATE INDEX IF NOT EXISTS idx_utilization_history_window_recorded
         ON utilization_history(window_type, recorded_at)
+    `)
+  }
+
+  if (currentVersion < 6) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS whatsapp_auth (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    `)
+
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS whatsapp_message_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recipient TEXT NOT NULL,
+        body TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+        attempts INTEGER NOT NULL DEFAULT 0,
+        last_attempt_at TEXT,
+        status TEXT NOT NULL DEFAULT 'pending'
+      )
+    `)
+
+    database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_whatsapp_queue_status
+        ON whatsapp_message_queue(status)
     `)
   }
 

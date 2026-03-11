@@ -23,6 +23,7 @@ export function getNotificationSettings(): NotificationSettings {
         windows: { ...NOTIFICATION_DEFAULTS.paceAlerts.windows, ...saved.paceAlerts?.windows },
       },
       quietHours: { ...NOTIFICATION_DEFAULTS.quietHours, ...saved.quietHours },
+      whatsapp: { ...NOTIFICATION_DEFAULTS.whatsapp, ...saved.whatsapp },
     }
   } catch {
     return { ...NOTIFICATION_DEFAULTS }

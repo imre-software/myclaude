@@ -3,6 +3,7 @@ import type {
   NotificationSettings,
   NotificationSettingsUpdate,
 } from '~/types/notifications'
+import type { WhatsAppStatus } from '~/types/whatsapp'
 import { NOTIFICATION_DEFAULTS } from '~/types/notifications'
 
 async function emitUsageToTray(data: { fiveHour: number | null, sevenDay: number | null, sevenDaySonnet: number | null }) {
@@ -19,6 +20,11 @@ export const useNotificationStore = defineStore('notifications', () => {
   const unreadCount = ref(0)
   const isTauriAvailable = ref(false)
   const permissionStatus = ref<'not-determined' | 'granted' | 'denied' | 'provisional' | 'unknown'>('not-determined')
+  const whatsappStatus = ref<WhatsAppStatus>({
+    connection: 'disconnected',
+    phoneNumber: '',
+    queueStats: { pending: 0, failed: 0 },
+  })
   let eventSource: EventSource | null = null
 
   function listenForTrayRefresh() {
@@ -68,6 +74,15 @@ export const useNotificationStore = defineStore('notifications', () => {
     listenForTrayRefresh()
     await loadUnreadCount()
     connectSSE()
+    await loadWhatsAppStatus()
+  }
+
+  async function loadWhatsAppStatus() {
+    try {
+      whatsappStatus.value = await $fetch<WhatsAppStatus>('/api/whatsapp/status')
+    } catch {
+      // Keep default
+    }
   }
 
   function connectSSE() {
@@ -155,10 +170,12 @@ export const useNotificationStore = defineStore('notifications', () => {
     settings,
     unreadCount,
     permissionStatus,
+    whatsappStatus,
     init,
     requestPermission,
     updateSettings,
     loadUnreadCount,
+    loadWhatsAppStatus,
     sendTestNotification,
   }
 })
