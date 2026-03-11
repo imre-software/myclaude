@@ -136,6 +136,7 @@
     "account": "Account",
     "subscription": "Subscription",
     "defaultModel": "Default Model",
+    "modelDefault": "Default",
     "effortLevel": "Effort Level",
     "extendedThinking": "Extended Thinking",
     "fastModeOptIn": "Fast Mode Per-Session Opt-in",

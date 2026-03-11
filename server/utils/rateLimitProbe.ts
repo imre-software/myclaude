@@ -11,6 +11,36 @@ let cachedToken: { accessToken: string, expiresAt: number } | null = null
 // 5 min TTL ensures we don't burn through the quota on repeated refreshes.
 const CACHE_TTL = 300_000
 
+// ---- SQLite persistence ----
+
+const DB_CACHE_KEY = 'rate_limit_cache'
+
+function persistToDb(data: RateLimitInfo): void {
+  try {
+    const db = getDb()
+    const payload = JSON.stringify({ data, savedAt: Date.now() })
+    db.prepare(
+      'INSERT OR REPLACE INTO notification_settings (key, value) VALUES (?, ?)',
+    ).run(DB_CACHE_KEY, payload)
+  } catch {
+    // Non-critical - in-memory cache still works
+  }
+}
+
+function loadFromDb(): RateLimitInfo | null {
+  try {
+    const db = getDb()
+    const row = db.prepare(
+      'SELECT value FROM notification_settings WHERE key = ?',
+    ).get(DB_CACHE_KEY) as { value: string } | undefined
+    if (!row) return null
+    const parsed = JSON.parse(row.value) as { data: RateLimitInfo, savedAt: number }
+    return parsed.data
+  } catch {
+    return null
+  }
+}
+
 async function readKeychainToken(): Promise<{ accessToken: string, expiresAt: number } | null> {
   try {
     const { stdout } = await execFileAsync('security', [
@@ -84,10 +114,10 @@ export function clearRateLimitCache() {
 
 /**
  * Returns cached rate limits without hitting the API.
- * Used by the pace API and any read-only consumers.
+ * Falls back to SQLite if in-memory cache is empty.
  */
 export function getCachedRateLimits(): RateLimitInfo | null {
-  return cachedResult?.data ?? null
+  return cachedResult?.data ?? loadFromDb()
 }
 
 /**
@@ -118,19 +148,26 @@ function parseResponse(json: OAuthUsageResponse): RateLimitInfo | null {
 }
 
 /**
+ * Returns the best available fallback: in-memory cache, then SQLite.
+ */
+function getFallback(): RateLimitInfo | null {
+  return cachedResult?.data ?? loadFromDb()
+}
+
+/**
  * Fetches rate limits from the Anthropic OAuth API.
- * Known issue: Anthropic's /api/oauth/usage endpoint has aggressive
- * per-token rate limits (~5 req) and a server-side bug causing persistent
- * 429s (tracked: github.com/anthropics/claude-code/issues/30930).
- * On 429 we fall back to cached data and flag rateLimited for the UI.
+ * Falls back to in-memory cache, then SQLite, on any error.
+ * On success, persists to both in-memory cache and SQLite so
+ * data survives server restarts and 429 storms.
  */
 export async function fetchRateLimits(): Promise<RateLimitInfo | null> {
+  // Serve from in-memory cache if fresh
   if (cachedResult && (Date.now() - cachedResult.fetchedAt) < CACHE_TTL) {
     return cachedResult.data
   }
 
   const accessToken = await getValidToken()
-  if (!accessToken) return cachedResult?.data ?? null
+  if (!accessToken) return getFallback()
 
   try {
     const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
@@ -143,26 +180,27 @@ export async function fetchRateLimits(): Promise<RateLimitInfo | null> {
     console.log(`[rateLimitProbe] API response status: ${response.status}`)
 
     if (response.status === 429) {
-      console.warn('[rateLimitProbe] 429 rate limited by Anthropic API (known server-side issue)')
-      if (cachedResult) {
-        cachedResult.rateLimited = true
-        cachedResult.fetchedAt = Date.now()
+      console.warn('[rateLimitProbe] 429 rate limited - falling back to cached data')
+      const fallback = getFallback()
+      if (fallback) {
+        cachedResult = { data: fallback, fetchedAt: Date.now(), rateLimited: true }
       }
-      return cachedResult?.data ?? null
+      return fallback
     }
 
     if (!response.ok) {
       console.warn(`[rateLimitProbe] API error: ${response.status}`)
-      return cachedResult?.data ?? null
+      return getFallback()
     }
 
     const json = await response.json() as OAuthUsageResponse
     const result = parseResponse(json)
-    if (!result) return cachedResult?.data ?? null
+    if (!result) return getFallback()
 
     cachedResult = { data: result, fetchedAt: Date.now(), rateLimited: false }
+    persistToDb(result)
     return result
   } catch {
-    return cachedResult?.data ?? null
+    return getFallback()
   }
 }

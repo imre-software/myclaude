@@ -60,7 +60,7 @@ export async function getModelConfig(): Promise<ModelConfig> {
   const settings = await readSettings()
   return {
     model: (settings.model as string) ?? 'default',
-    availableModels: (settings.availableModels as string[]) ?? [],
+    availableModels: ['default', 'sonnet', 'opus', 'haiku'],
     effortLevel: (settings.effortLevel as ModelConfig['effortLevel']) ?? 'high',
     alwaysThinkingEnabled: (settings.alwaysThinkingEnabled as boolean) ?? false,
     fastModePerSessionOptIn: (settings.fastModePerSessionOptIn as boolean) ?? false,

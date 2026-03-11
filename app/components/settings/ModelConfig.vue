@@ -15,12 +15,21 @@ const effortOptions = [
   { label: 'Low', value: 'low' },
   { label: 'Medium', value: 'medium' },
   { label: 'High', value: 'high' },
+  { label: 'Max', value: 'max' },
 ]
 
+const modelLabels: Record<string, string> = {
+  default: t('settings.modelDefault'),
+  sonnet: 'Sonnet',
+  opus: 'Opus',
+  haiku: 'Haiku',
+}
+
 const modelItems = computed(() =>
-  props.config.availableModels.length
-    ? props.config.availableModels.map(m => ({ label: m, value: m }))
-    : [{ label: props.config.model || 'default', value: props.config.model || 'default' }],
+  props.config.availableModels.map(m => ({
+    label: modelLabels[m] ?? m,
+    value: m,
+  })),
 )
 
 async function handleModelChange(value: string) {

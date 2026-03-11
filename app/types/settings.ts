@@ -16,7 +16,7 @@ export interface McpServer {
 export interface ModelConfig {
   model: string
   availableModels: string[]
-  effortLevel: 'low' | 'medium' | 'high'
+  effortLevel: 'low' | 'medium' | 'high' | 'max'
   alwaysThinkingEnabled: boolean
   fastModePerSessionOptIn: boolean
 }
