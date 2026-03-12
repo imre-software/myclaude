@@ -6,6 +6,9 @@ import type { BusEvent } from './notificationBus'
 
 type WASocket = ReturnType<typeof makeWASocket>
 
+// Track outgoing message IDs to skip them in messages.upsert
+const sentMessageIds = new Set<string>()
+
 let cachedVersion: WAVersion | null = null
 
 async function getWaVersion(): Promise<WAVersion> {
@@ -83,7 +86,8 @@ async function flushQueue(): Promise<void> {
   for (const msg of messages) {
     try {
       const jid = msg.recipient.replace('+', '') + '@s.whatsapp.net'
-      await sock.sendMessage(jid, { text: msg.body })
+      const result = await sock.sendMessage(jid, { text: msg.body })
+      if (result?.key?.id) sentMessageIds.add(result.key.id)
       markSent(msg.id)
     } catch {
       markFailed(msg.id)
@@ -209,14 +213,53 @@ export async function connectWhatsApp(): Promise<void> {
       for (const msg of msgs) {
         if (!msg.message) continue
 
-        // Only accept replies to our notification messages (swipe-to-reply)
-        const contextInfo = msg.message.extendedTextMessage?.contextInfo
-        const quotedMessageId = contextInfo?.stanzaId
-        if (!quotedMessageId) continue
+        // Only accept messages from the self-chat (our own number)
+        // WhatsApp may use classic JID (@s.whatsapp.net) or LID format (@lid)
+        // For self-chat, accept both: fromMe messages to own JID, or LID-based self-chat
+        const senderJid = msg.key.remoteJid
+        if (!senderJid || !settings.whatsapp.phoneNumber) continue
+        const expectedJid = settings.whatsapp.phoneNumber.replace('+', '') + '@s.whatsapp.net'
+        const isSelfJid = senderJid === expectedJid
+        const isLidSelfChat = senderJid.endsWith('@lid')
+        if (!isSelfJid && !isLidSelfChat) {
+          console.log('[whatsapp-chat] skipping message from', senderJid)
+          continue
+        }
 
-        const text = msg.message.extendedTextMessage?.text
-        if (text) {
-          deliverReply(text, quotedMessageId)
+        // Skip our own outgoing messages (sent via sendMessage)
+        if (msg.key.id && sentMessageIds.has(msg.key.id)) {
+          sentMessageIds.delete(msg.key.id)
+          console.log('[whatsapp-chat] skipping own outgoing message', msg.key.id)
+          continue
+        }
+
+        // Extract text from either extendedTextMessage or conversation
+        const extendedText = msg.message.extendedTextMessage
+        const contextInfo = extendedText?.contextInfo
+        const quotedMessageId = contextInfo?.stanzaId
+        const text = extendedText?.text ?? msg.message.conversation
+
+        console.log('[whatsapp-chat] incoming:', { text, fromMe: msg.key.fromMe, quotedMessageId, msgId: msg.key.id })
+
+        if (!text) continue
+
+        // "kill" from any context cancels all pending hooks + executors
+        if (text.trim().toLowerCase() === 'kill') {
+          cancelPending()
+          killAllExecutors()
+          sendWhatsAppMessage(settings.whatsapp.phoneNumber, 'All pending tasks and processes killed.')
+          continue
+        }
+
+        if (quotedMessageId) {
+          // Try hook-reply flow first; if no pending hook matches, fall through to chat
+          const delivered = deliverReply(text, quotedMessageId)
+          if (!delivered) {
+            handleWhatsAppChatMessage(settings.whatsapp.phoneNumber, text)
+          }
+        } else {
+          // New message (not a reply) - route to chat flow
+          handleWhatsAppChatMessage(settings.whatsapp.phoneNumber, text)
         }
       }
     })
@@ -266,7 +309,8 @@ export async function sendWhatsAppMessage(recipient: string, text: string): Prom
 
   try {
     const jid = recipient.replace('+', '') + '@s.whatsapp.net'
-    await sock.sendMessage(jid, { text })
+    const result = await sock.sendMessage(jid, { text })
+    if (result?.key?.id) sentMessageIds.add(result.key.id)
     return true
   } catch {
     enqueueMessage(recipient, text)
@@ -280,6 +324,7 @@ export async function sendWhatsAppMessageForRemote(recipient: string, text: stri
   try {
     const jid = recipient.replace('+', '') + '@s.whatsapp.net'
     const result = await sock.sendMessage(jid, { text })
+    if (result?.key?.id) sentMessageIds.add(result.key.id)
     return result?.key?.id ?? null
   } catch {
     return null
@@ -290,5 +335,16 @@ export function tryAutoReconnect(): void {
   if (connectionStatus !== 'disconnected') return
   if (hasAuthState()) {
     connectWhatsApp()
+  }
+}
+
+async function handleWhatsAppChatMessage(phoneNumber: string, text: string): Promise<void> {
+  try {
+    const action = await handleChatMessage('whatsapp', text)
+    const response = formatChatActionWhatsApp(action)
+    await sendWhatsAppMessage(phoneNumber, response)
+  } catch (err) {
+    if (import.meta.dev) console.error('[whatsapp] chat message error:', err)
+    await sendWhatsAppMessage(phoneNumber, 'An error occurred processing your message.')
   }
 }

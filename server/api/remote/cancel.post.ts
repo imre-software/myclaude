@@ -1,4 +1,5 @@
 export default defineEventHandler(() => {
   cancelPending()
-  return { ok: true }
+  const killed = killAllExecutors()
+  return { ok: true, killedProcesses: killed }
 })

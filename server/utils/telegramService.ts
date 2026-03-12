@@ -103,6 +103,22 @@ export async function sendTelegramMessageForRemote(token: string, chatId: string
   }
 }
 
+export async function sendTelegramMessagePlain(token: string, chatId: string, text: string): Promise<boolean> {
+  try {
+    await $fetch(`${TELEGRAM_API}${token}/sendMessage`, {
+      method: 'POST',
+      body: {
+        chat_id: chatId,
+        text,
+      },
+    })
+    return true
+  } catch (err) {
+    if (import.meta.dev) console.error('[telegram] plain send failed:', err)
+    return false
+  }
+}
+
 export function tryTelegramAutoConnect(): void {
   const settings = getNotificationSettings()
   if (settings.telegram.enabled && settings.telegram.botToken && settings.telegram.chatId) {

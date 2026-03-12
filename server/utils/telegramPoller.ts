@@ -6,7 +6,7 @@ let lastUpdateId = 0
 export function startTelegramPolling(): void {
   if (pollingInterval) return
 
-  console.log('[telegram-poller] starting polling for remote replies')
+  console.log('[telegram-poller] starting polling for remote messages')
 
   pollingInterval = setInterval(async () => {
     const settings = getNotificationSettings()
@@ -16,10 +16,6 @@ export function startTelegramPolling(): void {
     }
 
     if (!settings.telegram.botToken || !settings.telegram.chatId) return
-
-    // Only poll if there's a pending request
-    const pending = getPending()
-    if (!pending) return
 
     try {
       const res = await $fetch<{
@@ -55,11 +51,26 @@ export function startTelegramPolling(): void {
         // Only accept messages from the configured chat
         if (String(msg.chat?.id) !== settings.telegram.chatId) continue
 
-        // Only accept replies to our notification messages
-        const replyToId = msg.reply_to_message?.message_id
-        if (!replyToId) continue
+        // "kill" from any context cancels all pending hooks + executors
+        if (msg.text.trim().toLowerCase() === 'kill') {
+          cancelPending()
+          killAllExecutors()
+          sendTelegramMessagePlain(settings.telegram.botToken, settings.telegram.chatId, 'All pending tasks and processes killed.')
+          continue
+        }
 
-        deliverReply(msg.text, replyToId)
+        const replyToId = msg.reply_to_message?.message_id
+
+        if (replyToId) {
+          // Try hook-reply flow first; if no pending hook matches, fall through to chat
+          const delivered = deliverReply(msg.text, replyToId)
+          if (!delivered) {
+            handleTelegramChatMessage(settings.telegram.botToken, settings.telegram.chatId, msg.text)
+          }
+        } else {
+          // New message (not a reply) - route to chat flow
+          handleTelegramChatMessage(settings.telegram.botToken, settings.telegram.chatId, msg.text)
+        }
       }
     } catch (err) {
       if (import.meta.dev) console.error('[telegram-poller] poll error:', err)
@@ -77,4 +88,15 @@ export function stopTelegramPolling(): void {
 
 export function isTelegramPolling(): boolean {
   return pollingInterval !== null
+}
+
+async function handleTelegramChatMessage(botToken: string, chatId: string, text: string): Promise<void> {
+  try {
+    const action = await handleChatMessage('telegram', text)
+    const response = formatChatActionTelegram(action)
+    await sendTelegramMessagePlain(botToken, chatId, response)
+  } catch (err) {
+    if (import.meta.dev) console.error('[telegram-poller] chat message error:', err)
+    await sendTelegramMessagePlain(botToken, chatId, 'An error occurred processing your message.')
+  }
 }

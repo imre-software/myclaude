@@ -34,6 +34,33 @@ export interface RemoteLogEntry {
   status: 'pending' | 'replied' | 'timeout' | 'cancelled'
 }
 
+export type ChatChannel = 'whatsapp' | 'telegram'
+
+export type ChatFlowState = 'idle' | 'selecting' | 'chatting'
+
+export interface ActiveClaudeSession {
+  pid: number
+  cwd: string
+  project: string
+}
+
+export interface ChatFlowContext {
+  state: ChatFlowState
+  sessions: ActiveClaudeSession[]
+  selectedSession: ActiveClaudeSession | null
+  lastActivity: number
+}
+
+export type ChatAction =
+  | { type: 'session-list', sessions: ActiveClaudeSession[] }
+  | { type: 'session-selected', session: ActiveClaudeSession }
+  | { type: 'no-sessions' }
+  | { type: 'chat-response', response: string, project: string }
+  | { type: 'chat-error', error: string }
+  | { type: 'still-processing' }
+  | { type: 'reset' }
+  | { type: 'invalid-selection', max: number }
+
 export const REMOTE_MODE_DEFAULTS: RemoteModeSettings = {
   enabled: false,
   hooks: {
