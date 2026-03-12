@@ -74,6 +74,7 @@ export type HookEvent =
   | 'SessionEnd'
   | 'UserPromptSubmit'
   | 'Stop'
+  | 'PermissionRequest'
   | 'Notification'
   | 'SubagentStart'
   | 'SubagentStop'

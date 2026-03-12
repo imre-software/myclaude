@@ -86,6 +86,23 @@ export function disconnectTelegram(): void {
   saveNotificationSettings(settings)
 }
 
+export async function sendTelegramMessageForRemote(token: string, chatId: string, text: string): Promise<number | null> {
+  try {
+    const res = await $fetch<{ ok: boolean, result: { message_id: number } }>(`${TELEGRAM_API}${token}/sendMessage`, {
+      method: 'POST',
+      body: {
+        chat_id: chatId,
+        text,
+        parse_mode: 'MarkdownV2',
+      },
+    })
+    return res.result?.message_id ?? null
+  } catch (err) {
+    if (import.meta.dev) console.error('[telegram] remote send failed:', err)
+    return null
+  }
+}
+
 export function tryTelegramAutoConnect(): void {
   const settings = getNotificationSettings()
   if (settings.telegram.enabled && settings.telegram.botToken && settings.telegram.chatId) {

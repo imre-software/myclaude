@@ -1,4 +1,4 @@
-import { readFile, writeFile, readdir, mkdir, unlink, rm } from 'node:fs/promises'
+import { readFile, writeFile, readdir, mkdir, unlink, rm, chmod } from 'node:fs/promises'
 import { join } from 'node:path'
 import { existsSync } from 'node:fs'
 import type {
@@ -22,6 +22,8 @@ const SETTINGS_PATH = join(CLAUDE_DIR, 'settings.json')
 const CLAUDE_JSON_PATH = join(HOME, '.claude.json')
 const AGENTS_DIR = join(CLAUDE_DIR, 'agents')
 const SKILLS_DIR = join(CLAUDE_DIR, 'skills')
+const HOOKS_DIR = join(CLAUDE_DIR, 'hooks')
+const REMOTE_SCRIPT_PATH = join(HOOKS_DIR, 'remote-mode.sh')
 
 // ---- JSON Helpers ----
 
@@ -402,4 +404,92 @@ export async function updateAttribution(attr: { commit?: string, pr?: string }):
   if (attr.pr !== undefined) current.pr = attr.pr
   settings.attribution = current
   await writeSettings(settings)
+}
+
+// ---- Remote Mode Hooks ----
+
+const REMOTE_SCRIPT_CONTENT = `#!/bin/bash
+# Claude Command Remote Mode - DO NOT EDIT (managed by Claude Command app)
+curl -s --max-time 3600 -X POST \\
+  -H "Content-Type: application/json" \\
+  -d @- \\
+  http://localhost:3019/api/remote/hook 2>/dev/null
+exit $?
+`
+
+const REMOTE_SCRIPT_MARKER = 'remote-mode.sh'
+
+export async function installRemoteHooks(hookTypes: { stop: boolean, permissionRequest: boolean, notification: boolean }): Promise<void> {
+  // Create script file
+  if (!existsSync(HOOKS_DIR)) await mkdir(HOOKS_DIR, { recursive: true })
+  await writeFile(REMOTE_SCRIPT_PATH, REMOTE_SCRIPT_CONTENT, 'utf-8')
+  await chmod(REMOTE_SCRIPT_PATH, 0o755)
+
+  // Read existing hooks and filter out old remote hooks
+  const existing = await getHooks()
+  const filtered = existing.filter(e => !e.handlers.some(h => h.command?.includes(REMOTE_SCRIPT_MARKER)))
+
+  // Build new remote hook entries
+  const remoteEntries: HookEntry[] = []
+
+  if (hookTypes.stop) {
+    remoteEntries.push({
+      event: 'Stop',
+      handlers: [{
+        type: 'command',
+        command: REMOTE_SCRIPT_PATH,
+        timeout: 3600,
+      }],
+    })
+  }
+
+  if (hookTypes.permissionRequest) {
+    remoteEntries.push({
+      event: 'PermissionRequest',
+      handlers: [{
+        type: 'command',
+        command: REMOTE_SCRIPT_PATH,
+        timeout: 3600,
+      }],
+    })
+  }
+
+  if (hookTypes.notification) {
+    remoteEntries.push({
+      event: 'Notification',
+      matcher: 'permission_prompt',
+      handlers: [{
+        type: 'command',
+        command: REMOTE_SCRIPT_PATH,
+        timeout: 10,
+      }],
+    })
+    remoteEntries.push({
+      event: 'Notification',
+      matcher: 'idle_prompt',
+      handlers: [{
+        type: 'command',
+        command: REMOTE_SCRIPT_PATH,
+        timeout: 10,
+      }],
+    })
+  }
+
+  await saveHooks([...filtered, ...remoteEntries])
+}
+
+export async function removeRemoteHooks(): Promise<void> {
+  // Remove remote hook entries from settings
+  const existing = await getHooks()
+  const filtered = existing.filter(e => !e.handlers.some(h => h.command?.includes(REMOTE_SCRIPT_MARKER)))
+  await saveHooks(filtered)
+
+  // Delete script file
+  if (existsSync(REMOTE_SCRIPT_PATH)) {
+    await unlink(REMOTE_SCRIPT_PATH)
+  }
+}
+
+export function isRemoteHooksInstalled(): boolean {
+  return existsSync(REMOTE_SCRIPT_PATH)
 }

@@ -17,6 +17,7 @@ const hookEventDescriptions: Record<HookEvent, string> = {
   SessionEnd: 'Runs when a session terminates. Use for cleanup or logging.',
   UserPromptSubmit: 'Runs when the user submits a prompt, before Claude processes it.',
   Stop: 'Runs when Claude finishes responding. Can force Claude to continue.',
+  PermissionRequest: 'Runs when Claude needs permission for a tool. Can allow or deny programmatically.',
   Notification: 'Runs when Claude Code sends a notification (permission prompt, idle, etc.).',
   SubagentStart: 'Runs when a subagent is spawned via the Agent tool.',
   SubagentStop: 'Runs when a subagent finishes. Can force it to continue.',
@@ -26,7 +27,7 @@ const hookEventDescriptions: Record<HookEvent, string> = {
 const hookEvents: HookEvent[] = [
   'PreToolUse', 'PostToolUse', 'PostToolUseFailure',
   'SessionStart', 'SessionEnd', 'UserPromptSubmit',
-  'Stop', 'Notification', 'SubagentStart', 'SubagentStop', 'PreCompact',
+  'Stop', 'PermissionRequest', 'Notification', 'SubagentStart', 'SubagentStop', 'PreCompact',
 ]
 
 const eventOptions = hookEvents.map(e => ({ label: e, value: e }))

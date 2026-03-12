@@ -39,6 +39,19 @@ export interface NotificationSettings {
     chatId: string
     botName: string
   }
+  remoteMode: {
+    enabled: boolean
+    hooks: {
+      stop: boolean
+      permissionRequest: boolean
+      notification: boolean
+    }
+    channels: {
+      whatsapp: boolean
+      telegram: boolean
+    }
+    timeoutMinutes: number
+  }
 }
 
 export interface NotificationRecord {
@@ -53,12 +66,16 @@ export interface NotificationRecord {
   read: boolean
 }
 
-export type NotificationSettingsUpdate = Partial<Omit<NotificationSettings, 'thresholds' | 'paceAlerts' | 'quietHours' | 'whatsapp' | 'telegram'>> & {
+export type NotificationSettingsUpdate = Partial<Omit<NotificationSettings, 'thresholds' | 'paceAlerts' | 'quietHours' | 'whatsapp' | 'telegram' | 'remoteMode'>> & {
   thresholds?: Partial<Record<NotificationWindowType, Partial<ThresholdConfig>>>
   paceAlerts?: Partial<NotificationSettings['paceAlerts']>
   quietHours?: Partial<NotificationSettings['quietHours']>
   whatsapp?: Partial<NotificationSettings['whatsapp']>
   telegram?: Partial<NotificationSettings['telegram']>
+  remoteMode?: Partial<NotificationSettings['remoteMode']> & {
+    hooks?: Partial<NotificationSettings['remoteMode']['hooks']>
+    channels?: Partial<NotificationSettings['remoteMode']['channels']>
+  }
 }
 
 export interface DebounceEntry {
@@ -91,5 +108,18 @@ export const NOTIFICATION_DEFAULTS: NotificationSettings = {
     botToken: '',
     chatId: '',
     botName: '',
+  },
+  remoteMode: {
+    enabled: false,
+    hooks: {
+      stop: true,
+      permissionRequest: true,
+      notification: true,
+    },
+    channels: {
+      whatsapp: false,
+      telegram: false,
+    },
+    timeoutMinutes: 60,
   },
 }

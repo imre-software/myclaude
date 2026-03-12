@@ -202,6 +202,25 @@ export async function connectWhatsApp(): Promise<void> {
       }
     })
 
+    sock.ev.on('messages.upsert', ({ messages: msgs }) => {
+      const settings = getNotificationSettings()
+      if (!settings.remoteMode?.enabled || !settings.remoteMode.channels.whatsapp) return
+
+      for (const msg of msgs) {
+        if (!msg.message) continue
+
+        // Only accept replies to our notification messages (swipe-to-reply)
+        const contextInfo = msg.message.extendedTextMessage?.contextInfo
+        const quotedMessageId = contextInfo?.stanzaId
+        if (!quotedMessageId) continue
+
+        const text = msg.message.extendedTextMessage?.text
+        if (text) {
+          deliverReply(text, quotedMessageId)
+        }
+      }
+    })
+
     sock.ev.on('creds.update', () => {
       saveCreds()
     })
@@ -252,6 +271,18 @@ export async function sendWhatsAppMessage(recipient: string, text: string): Prom
   } catch {
     enqueueMessage(recipient, text)
     return false
+  }
+}
+
+export async function sendWhatsAppMessageForRemote(recipient: string, text: string): Promise<string | null> {
+  if (!sock || connectionStatus !== 'connected') return null
+
+  try {
+    const jid = recipient.replace('+', '') + '@s.whatsapp.net'
+    const result = await sock.sendMessage(jid, { text })
+    return result?.key?.id ?? null
+  } catch {
+    return null
   }
 }
 

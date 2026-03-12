@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs'
 const DATA_DIR = join(process.cwd(), '.data')
 const DB_PATH = join(DATA_DIR, 'claude-stats.db')
 
-const CURRENT_SCHEMA_VERSION = 6
+const CURRENT_SCHEMA_VERSION = 7
 
 let db: Database.Database | null = null
 
@@ -171,6 +171,23 @@ function ensureSchema(database: Database.Database): void {
     database.exec(`
       CREATE INDEX IF NOT EXISTS idx_whatsapp_queue_status
         ON whatsapp_message_queue(status)
+    `)
+  }
+
+  if (currentVersion < 7) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS remote_mode_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        hook_event TEXT NOT NULL,
+        project TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        user_reply TEXT,
+        channel TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+        replied_at TEXT,
+        status TEXT NOT NULL DEFAULT 'pending'
+      )
     `)
   }
 

@@ -25,6 +25,12 @@ export function getNotificationSettings(): NotificationSettings {
       quietHours: { ...NOTIFICATION_DEFAULTS.quietHours, ...saved.quietHours },
       whatsapp: { ...NOTIFICATION_DEFAULTS.whatsapp, ...saved.whatsapp },
       telegram: { ...NOTIFICATION_DEFAULTS.telegram, ...saved.telegram },
+      remoteMode: {
+        ...NOTIFICATION_DEFAULTS.remoteMode,
+        ...saved.remoteMode,
+        hooks: { ...NOTIFICATION_DEFAULTS.remoteMode.hooks, ...saved.remoteMode?.hooks },
+        channels: { ...NOTIFICATION_DEFAULTS.remoteMode.channels, ...saved.remoteMode?.channels },
+      },
     }
   } catch {
     return { ...NOTIFICATION_DEFAULTS }
