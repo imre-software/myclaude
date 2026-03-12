@@ -1,29 +1,30 @@
-import { execFile } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 import type { GenerateResponse } from '~~/app/types/settings'
 
-function execWithClosedStdin(cmd: string, args: string[], timeout: number): Promise<string> {
+function runClaude(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = execFile(cmd, args, { timeout }, (err, stdout, stderr) => {
-      if (err) reject(new Error(stderr || err.message))
+    const child = spawn(
+      process.env.HOME ? join(process.env.HOME, '.local', 'bin', 'claude') : 'claude',
+      args,
+      { stdio: ['ignore', 'pipe', 'pipe'] },
+    )
+    let stdout = ''
+    let stderr = ''
+
+    child.stdout.on('data', (data: Buffer) => { stdout += data.toString() })
+    child.stderr.on('data', (data: Buffer) => { stderr += data.toString() })
+
+    child.on('error', (err) => reject(err))
+    child.on('close', (code) => {
+      if (code !== 0) reject(new Error(stderr || `Process exited with code ${code}`))
       else resolve(stdout)
     })
-    child.stdin?.end()
   })
 }
 
-function getClaudePath(): string {
-  return process.env.HOME
-    ? join(process.env.HOME, '.local', 'bin', 'claude')
-    : 'claude'
-}
-
 async function askClaude(prompt: string): Promise<string> {
-  const stdout = await execWithClosedStdin(
-    getClaudePath(),
-    ['-p', '--output-format', 'json', prompt],
-    60_000,
-  )
+  const stdout = await runClaude(['-p', '--output-format', 'json', prompt])
   const json = JSON.parse(stdout)
   return (json.result as string) ?? ''
 }
@@ -99,38 +100,14 @@ Output ONLY the complete updated content. No explanations, no markdown fences, j
   return cleaned
 }
 
-export async function generateHook(userPrompt: string): Promise<GenerateResponse> {
-  const prompt = `Generate a Claude Code hook configuration based on this description: "${userPrompt}"
-
-Requirements:
-- Output ONLY valid JSON (no markdown, no explanation)
-- The JSON should have this structure:
-{
-  "event": "PreToolUse|PostToolUse|Stop|SessionStart|etc",
-  "matcher": "optional matcher pattern",
-  "handlers": [
-    {
-      "type": "command",
-      "command": "the shell command to run",
-      "timeout": 600
-    }
-  ]
-}
-
-Available events: PreToolUse, PostToolUse, PostToolUseFailure, SessionStart, SessionEnd, UserPromptSubmit, Stop, Notification, SubagentStart, SubagentStop, PreCompact
-Matcher is used with tool-related events to filter by tool name (supports regex).
-If a shell script is needed, use an inline command or reference a script path.`
-
-  const content = await askClaude(prompt)
-  const cleaned = content.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '').trim()
-
-  let name = 'new-hook'
-  try {
-    const parsed = JSON.parse(cleaned)
-    name = `${parsed.event}${parsed.matcher ? `:${parsed.matcher}` : ''}`
-  } catch {
-    // name stays as default
-  }
-
-  return { content: cleaned, name, filename: name }
+export async function createHook(userPrompt: string): Promise<void> {
+  await runClaude([
+    '-p',
+    '--permission-mode', 'bypassPermissions',
+    '--max-turns', '10',
+    '--system-prompt', `You are a Claude Code hook creator. The user will describe a hook they want.
+You MUST create the hook exactly as requested. Do NOT question whether the hook is needed, do NOT suggest alternatives, do NOT refuse.
+Your ONLY job is to implement the hook the user asked for. Create any shell scripts as needed and add the hook to ~/.claude/settings.json.`,
+    userPrompt,
+  ])
 }

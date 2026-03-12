@@ -73,13 +73,38 @@ export const useSettingsStore = defineStore('settings', () => {
     skills.value = await $fetch<SkillDefinition[]>('/api/settings/skills')
   }
 
-  async function saveAllHooks(entries: HookEntry[]) {
-    await $fetch('/api/settings/hooks', { method: 'PUT', body: { entries } })
+  async function loadHooks() {
     hooks.value = await $fetch<HookEntry[]>('/api/settings/hooks')
   }
 
-  async function generate(type: 'skill' | 'agent' | 'hook', prompt: string): Promise<GenerateResponse> {
-    return $fetch<GenerateResponse>('/api/settings/generate', { method: 'POST', body: { type, prompt } })
+  async function saveAllHooks(entries: HookEntry[]) {
+    await $fetch('/api/settings/hooks', { method: 'PUT', body: { entries } })
+    await loadHooks()
+  }
+
+  async function generate(type: 'skill' | 'agent' | 'hook', prompt: string): Promise<GenerateResponse | null> {
+    const { jobId } = await $fetch<{ jobId: string }>('/api/settings/generate', {
+      method: 'POST',
+      body: { type, prompt },
+    })
+
+    return new Promise((resolve, reject) => {
+      const es = new EventSource(`/api/settings/generate/stream?jobId=${jobId}`)
+      es.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        if (data.status === 'done') {
+          es.close()
+          resolve(data.result as GenerateResponse | null)
+        } else if (data.status === 'error') {
+          es.close()
+          reject(new Error(data.error))
+        }
+      }
+      es.onerror = () => {
+        es.close()
+        reject(new Error('Connection to generation stream lost'))
+      }
+    })
   }
 
   async function aiUpdate(content: string, prompt: string): Promise<string> {
@@ -103,6 +128,7 @@ export const useSettingsStore = defineStore('settings', () => {
     deleteAgent,
     saveSkill,
     deleteSkill,
+    loadHooks,
     saveAllHooks,
     generate,
     aiUpdate,

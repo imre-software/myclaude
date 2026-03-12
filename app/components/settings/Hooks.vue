@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { HookEntry, HookEvent } from '~~/app/types/settings'
-import type { GenerateResponse } from '~~/app/types/settings'
 
 const { t } = useI18n()
 
@@ -8,7 +7,7 @@ const props = defineProps<{
   hooks: HookEntry[]
 }>()
 
-const { saveAllHooks } = useSettingsData()
+const { saveAllHooks, loadHooks } = useSettingsData()
 
 const isAiDialogOpen = ref(false)
 const isAdding = ref(false)
@@ -21,20 +20,8 @@ const newHook = ref({
   timeout: 600,
 })
 
-async function handleGenerated(result: GenerateResponse) {
-  try {
-    const parsed = JSON.parse(result.content) as HookEntry
-    const updated = [...props.hooks, parsed]
-    await saveAllHooks(updated)
-  } catch {
-    // If parse fails, still try to add
-    const entry: HookEntry = {
-      event: 'PreToolUse',
-      handlers: [{ type: 'command', command: result.content }],
-    }
-    const updated = [...props.hooks, entry]
-    await saveAllHooks(updated)
-  }
+async function handleHookCreated() {
+  await loadHooks()
 }
 
 async function handleAdd() {
@@ -143,7 +130,7 @@ async function handleRemove(index: number) {
     <SettingsAiGenerateDialog
       v-model:open="isAiDialogOpen"
       type="hook"
-      @generated="handleGenerated"
+      @done="handleHookCreated"
     />
   </div>
 </template>

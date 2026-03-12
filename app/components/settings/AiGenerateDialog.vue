@@ -10,12 +10,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   generated: [result: GenerateResponse]
+  done: []
 }>()
 
 const isOpen = defineModel<boolean>('open', { default: false })
 
 const prompt = ref('')
 const isGenerating = ref(false)
+const hookDone = ref(false)
 const error = ref('')
 const preview = ref<GenerateResponse | null>(null)
 
@@ -35,7 +37,12 @@ async function handleGenerate() {
       fullPrompt = `Event: ${selectedEvent.value}. ${fullPrompt}`
     }
     const result = await generate(props.type, fullPrompt)
-    preview.value = result
+    if (props.type === 'hook') {
+      hookDone.value = true
+      emit('done')
+    } else {
+      preview.value = result
+    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Generation failed'
   } finally {
@@ -56,6 +63,7 @@ function handleClose() {
   preview.value = null
   error.value = ''
   isGenerating.value = false
+  hookDone.value = false
   selectedEvent.value = 'PreToolUse'
 }
 </script>
@@ -64,6 +72,8 @@ function handleClose() {
   <UModal
     :open="isOpen"
     :title="t('settings.createWithAi')"
+    :dismissible="!isGenerating"
+    :close="!isGenerating"
     @update:open="isOpen = $event"
   >
     <template #body>
@@ -94,6 +104,20 @@ function handleClose() {
         />
 
         <UAlert
+          v-if="isGenerating"
+          color="info"
+          :title="t('settings.generatingHint')"
+          icon="i-lucide-loader"
+        />
+
+        <UAlert
+          v-if="hookDone"
+          color="success"
+          :title="t('settings.hookCreatedSuccess')"
+          icon="i-lucide-check-circle"
+        />
+
+        <UAlert
           v-if="error"
           color="error"
           :title="error"
@@ -115,15 +139,24 @@ function handleClose() {
     <template #footer>
       <div class="flex items-center justify-end gap-2">
         <UButton
-          :label="t('settings.cancel')"
-          variant="ghost"
+          v-if="hookDone"
+          :label="t('settings.done')"
+          icon="i-lucide-check"
           @click="handleClose"
         />
-        <UButton
-          v-if="preview"
-          :label="t('settings.save')"
-          @click="handleSave"
-        />
+        <template v-else>
+          <UButton
+            :label="t('settings.cancel')"
+            variant="ghost"
+            :disabled="isGenerating"
+            @click="handleClose"
+          />
+          <UButton
+            v-if="preview"
+            :label="t('settings.save')"
+            @click="handleSave"
+          />
+        </template>
       </div>
     </template>
   </UModal>
