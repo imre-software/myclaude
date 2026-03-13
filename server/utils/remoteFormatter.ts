@@ -65,17 +65,9 @@ export function formatRemoteTelegram(options: RemoteMessageOptions): string {
 
 import type { ChatAction, ActiveClaudeSession } from '~~/app/types/remote'
 
-const WHATSAPP_CHAR_LIMIT = 4096
-const TELEGRAM_CHAR_LIMIT = 4096
-
-function truncateResponse(text: string, limit: number, suffix: string): string {
-  if (text.length <= limit) return text
-  return text.slice(0, limit - suffix.length) + suffix
-}
-
 function formatSessionList(sessions: ActiveClaudeSession[]): string {
   return sessions
-    .map((s, i) => `${i + 1}. ${s.project} (${s.cwd})`)
+    .map((s, i) => `${i + 1}. ${s.project}`)
     .join('\n')
 }
 
@@ -84,25 +76,24 @@ export function formatChatActionWhatsApp(action: ChatAction): string {
     case 'session-list':
       return `*Active Claude Sessions*\n\n${formatSessionList(action.sessions)}\n\n_Reply with a number to select a session._`
 
-    case 'session-selected':
-      return `*Connected to ${action.session.project}*\n\nSend messages to chat with Claude in this project.\nType "back" for session list or "exit" to disconnect.`
+    case 'session-selected': {
+      const lines = [`*Connecting to ${action.session.project}...*`]
+      if (action.session.lastMessage) {
+        lines.push('')
+        lines.push(`_Last activity:_\n${action.session.lastMessage}`)
+      }
+      lines.push('')
+      lines.push('Claude will message you shortly.')
+      lines.push('Reply to Claude\'s messages to continue the conversation.')
+      lines.push('Type "back" for session list or "exit" to disconnect.')
+      return lines.join('\n')
+    }
 
     case 'no-sessions':
       return 'No active Claude sessions found. Start Claude in a terminal first.'
 
-    case 'chat-response': {
-      const header = `*${action.project}*\n\n`
-      const footer = '\n\n_Type "back" for sessions or "exit" to disconnect._'
-      const maxBody = WHATSAPP_CHAR_LIMIT - header.length - footer.length
-      const body = truncateResponse(action.response, maxBody, '\n... (truncated)')
-      return header + body + footer
-    }
-
-    case 'chat-error':
-      return `*Error*\n\n${action.error}`
-
-    case 'still-processing':
-      return '_Still processing your previous message. Please wait._'
+    case 'chatting-hint':
+      return '_Reply to Claude\'s messages to continue. Type "back" for sessions or "exit" to disconnect._'
 
     case 'reset':
       return 'Chat disconnected.'
@@ -117,25 +108,24 @@ export function formatChatActionTelegram(action: ChatAction): string {
     case 'session-list':
       return `Active Claude Sessions\n\n${formatSessionList(action.sessions)}\n\nReply with a number to select a session.`
 
-    case 'session-selected':
-      return `Connected to ${action.session.project}\n\nSend messages to chat with Claude in this project.\nType "back" for session list or "exit" to disconnect.`
+    case 'session-selected': {
+      const lines = [`Connecting to ${action.session.project}...`]
+      if (action.session.lastMessage) {
+        lines.push('')
+        lines.push(`Last activity:\n${action.session.lastMessage}`)
+      }
+      lines.push('')
+      lines.push('Claude will message you shortly.')
+      lines.push('Reply to Claude\'s messages to continue the conversation.')
+      lines.push('Type "back" for session list or "exit" to disconnect.')
+      return lines.join('\n')
+    }
 
     case 'no-sessions':
       return 'No active Claude sessions found. Start Claude in a terminal first.'
 
-    case 'chat-response': {
-      const header = `${action.project}\n\n`
-      const footer = '\n\nType "back" for sessions or "exit" to disconnect.'
-      const maxBody = TELEGRAM_CHAR_LIMIT - header.length - footer.length
-      const body = truncateResponse(action.response, maxBody, '\n... (truncated)')
-      return header + body + footer
-    }
-
-    case 'chat-error':
-      return `Error: ${action.error}`
-
-    case 'still-processing':
-      return 'Still processing your previous message. Please wait.'
+    case 'chatting-hint':
+      return 'Reply to Claude\'s messages to continue. Type "back" for sessions or "exit" to disconnect.'
 
     case 'reset':
       return 'Chat disconnected.'

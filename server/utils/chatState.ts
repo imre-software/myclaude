@@ -1,9 +1,8 @@
-import type { ChatChannel, ChatFlowContext, ChatAction } from '~~/app/types/remote'
+import type { ChatChannel, ChatFlowContext, ChatAction, ActiveClaudeSession } from '~~/app/types/remote'
 
 const INACTIVITY_TIMEOUT = 15 * 60 * 1000 // 15 minutes
 
 const states = new Map<ChatChannel, ChatFlowContext>()
-const executionLocks = new Map<ChatChannel, boolean>()
 
 function getContext(channel: ChatChannel): ChatFlowContext {
   let ctx = states.get(channel)
@@ -40,7 +39,7 @@ function resetContext(channel: ChatChannel): void {
 const CANCEL_COMMANDS = new Set(['cancel', 'exit', 'quit'])
 const BACK_COMMANDS = new Set(['back', 'sessions', 'list'])
 
-export async function handleChatMessage(channel: ChatChannel, text: string): Promise<ChatAction> {
+export async function handleChatMessage(channel: ChatChannel, text: string): Promise<ChatAction | null> {
   const normalized = text.trim().toLowerCase()
 
   // "kill" cancels all pending hook requests and running executors
@@ -53,31 +52,33 @@ export async function handleChatMessage(channel: ChatChannel, text: string): Pro
 
   // Global cancel from any state
   if (CANCEL_COMMANDS.has(normalized)) {
+    killAllExecutors()
     resetContext(channel)
     return { type: 'reset' }
-  }
-
-  // Check execution lock
-  if (executionLocks.get(channel)) {
-    return { type: 'still-processing' }
   }
 
   const ctx = getContext(channel)
 
   if (ctx.state === 'idle') {
+    // Only activate when message contains "claude"
+    if (!normalized.includes('claude')) {
+      return null
+    }
     return await handleIdle(channel, ctx)
   }
 
   if (ctx.state === 'selecting') {
-    return handleSelection(channel, ctx, normalized)
+    return await handleSelection(channel, ctx, normalized)
   }
 
   if (ctx.state === 'chatting') {
-    // "back" returns to session list
+    // "back" returns to session list, kills any running process
     if (BACK_COMMANDS.has(normalized)) {
+      killAllExecutors()
       return await handleIdle(channel, ctx)
     }
-    return await handleChat(channel, ctx, text)
+    // In chatting state, everything is handled by hooks (user swipe-replies to Claude's messages)
+    return { type: 'chatting-hint' }
   }
 
   return { type: 'reset' }
@@ -97,7 +98,7 @@ async function handleIdle(channel: ChatChannel, ctx: ChatFlowContext): Promise<C
     ctx.state = 'chatting'
     ctx.selectedSession = session
     ctx.sessions = sessions
-    return { type: 'session-selected', session }
+    return spawnAndReturn(channel, session)
   }
 
   ctx.state = 'selecting'
@@ -105,7 +106,7 @@ async function handleIdle(channel: ChatChannel, ctx: ChatFlowContext): Promise<C
   return { type: 'session-list', sessions }
 }
 
-function handleSelection(_channel: ChatChannel, ctx: ChatFlowContext, text: string): ChatAction {
+async function handleSelection(_channel: ChatChannel, ctx: ChatFlowContext, text: string): Promise<ChatAction> {
   const num = parseInt(text, 10)
 
   if (isNaN(num) || num < 1 || num > ctx.sessions.length) {
@@ -115,30 +116,22 @@ function handleSelection(_channel: ChatChannel, ctx: ChatFlowContext, text: stri
   const session = ctx.sessions[num - 1]!
   ctx.state = 'chatting'
   ctx.selectedSession = session
-  return { type: 'session-selected', session }
+  return spawnAndReturn(_channel, session)
 }
 
-async function handleChat(channel: ChatChannel, ctx: ChatFlowContext, message: string): Promise<ChatAction> {
-  if (!ctx.selectedSession) {
-    resetContext(channel)
-    return { type: 'reset' }
-  }
+function spawnAndReturn(channel: ChatChannel, session: ActiveClaudeSession): ChatAction {
+  const { onExit } = spawnChatSession(
+    session.cwd,
+    'User connected via WhatsApp/Telegram remote. Summarize what you\'ve been working on briefly.',
+  )
 
-  executionLocks.set(channel, true)
+  // When the spawned process exits, reset chat state
+  onExit.then(() => {
+    const current = states.get(channel)
+    if (current?.selectedSession?.cwd === session.cwd) {
+      resetContext(channel)
+    }
+  })
 
-  try {
-    const response = await executeInSession(ctx.selectedSession.cwd, message)
-    return {
-      type: 'chat-response',
-      response,
-      project: ctx.selectedSession.project,
-    }
-  } catch (err) {
-    return {
-      type: 'chat-error',
-      error: err instanceof Error ? err.message : String(err),
-    }
-  } finally {
-    executionLocks.set(channel, false)
-  }
+  return { type: 'session-selected', session }
 }

@@ -341,6 +341,7 @@ export function tryAutoReconnect(): void {
 async function handleWhatsAppChatMessage(phoneNumber: string, text: string): Promise<void> {
   try {
     const action = await handleChatMessage('whatsapp', text)
+    if (!action) return // message ignored (no "claude" keyword while idle)
     const response = formatChatActionWhatsApp(action)
     await sendWhatsAppMessage(phoneNumber, response)
   } catch (err) {

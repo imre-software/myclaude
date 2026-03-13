@@ -2,8 +2,6 @@ import { spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
 import { join } from 'node:path'
 
-const TIMEOUT_MS = 120_000
-
 const activeProcesses = new Set<ChildProcess>()
 
 export function killAllExecutors(): number {
@@ -16,65 +14,47 @@ export function killAllExecutors(): number {
   return killed
 }
 
-export async function executeInSession(cwd: string, message: string): Promise<string> {
+interface SpawnResult {
+  child: ChildProcess
+  onExit: Promise<void>
+}
+
+export function spawnChatSession(cwd: string, initialPrompt: string): SpawnResult {
   const claudePath = process.env.HOME
     ? join(process.env.HOME, '.local', 'bin', 'claude')
     : 'claude'
 
-  return new Promise((resolve) => {
-    const child = spawn(
-      claudePath,
-      ['-p', '--output-format', 'json', message],
-      {
-        cwd,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      },
-    )
+  const child = spawn(
+    claudePath,
+    ['-p', '--continue', initialPrompt],
+    {
+      cwd,
+      stdio: ['ignore', 'ignore', 'pipe'],
+    },
+  )
 
-    activeProcesses.add(child)
+  activeProcesses.add(child)
 
-    let stdout = ''
-    let stderr = ''
-    let killed = false
+  child.stderr?.on('data', (data: Buffer) => {
+    const msg = data.toString().trim()
+    if (msg) console.log('[remote-executor] stderr:', msg)
+  })
 
-    const timer = setTimeout(() => {
-      killed = true
-      child.kill('SIGTERM')
-      // Force kill after 5s if SIGTERM doesn't work
-      setTimeout(() => child.kill('SIGKILL'), 5000)
-    }, TIMEOUT_MS)
-
-    child.stdout.on('data', (data: Buffer) => { stdout += data.toString() })
-    child.stderr.on('data', (data: Buffer) => { stderr += data.toString() })
-
+  const onExit = new Promise<void>((resolve) => {
     child.on('error', (err) => {
-      clearTimeout(timer)
+      console.error('[remote-executor] process error:', err.message)
       activeProcesses.delete(child)
-      resolve(`Error: ${err.message}`)
+      resolve()
     })
 
     child.on('close', (code) => {
-      clearTimeout(timer)
+      if (import.meta.dev) {
+        console.log('[remote-executor] process exited with code', code)
+      }
       activeProcesses.delete(child)
-
-      if (killed) {
-        resolve('Claude took too long to respond (2 minute timeout). Try a simpler question.')
-        return
-      }
-
-      if (code !== 0) {
-        resolve(`Error: ${stderr || `Process exited with code ${code}`}`)
-        return
-      }
-
-      try {
-        const json = JSON.parse(stdout)
-        const result = (json.result as string) ?? ''
-        resolve(result || 'Claude returned an empty response.')
-      } catch {
-        // If JSON parsing fails, return raw stdout
-        resolve(stdout || 'Claude returned an empty response.')
-      }
+      resolve()
     })
   })
+
+  return { child, onExit }
 }

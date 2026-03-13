@@ -93,6 +93,7 @@ export function isTelegramPolling(): boolean {
 async function handleTelegramChatMessage(botToken: string, chatId: string, text: string): Promise<void> {
   try {
     const action = await handleChatMessage('telegram', text)
+    if (!action) return // message ignored (no "claude" keyword while idle)
     const response = formatChatActionTelegram(action)
     await sendTelegramMessagePlain(botToken, chatId, response)
   } catch (err) {

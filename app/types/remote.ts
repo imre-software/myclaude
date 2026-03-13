@@ -42,6 +42,7 @@ export interface ActiveClaudeSession {
   pid: number
   cwd: string
   project: string
+  lastMessage?: string
 }
 
 export interface ChatFlowContext {
@@ -55,9 +56,7 @@ export type ChatAction =
   | { type: 'session-list', sessions: ActiveClaudeSession[] }
   | { type: 'session-selected', session: ActiveClaudeSession }
   | { type: 'no-sessions' }
-  | { type: 'chat-response', response: string, project: string }
-  | { type: 'chat-error', error: string }
-  | { type: 'still-processing' }
+  | { type: 'chatting-hint' }
   | { type: 'reset' }
   | { type: 'invalid-selection', max: number }
 

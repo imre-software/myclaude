@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process'
-import { basename } from 'node:path'
+import { readdirSync, statSync } from 'node:fs'
+import { basename, join } from 'node:path'
 import type { ActiveClaudeSession } from '~~/app/types/remote'
 
 let cache: { sessions: ActiveClaudeSession[], timestamp: number } | null = null
@@ -83,6 +84,11 @@ export async function discoverClaudeSessions(): Promise<ActiveClaudeSession[]> {
     }),
   )
 
+  // Attach last assistant message from most recent transcript
+  for (const session of sessions) {
+    session.lastMessage = getLastTranscriptMessage(session.cwd)
+  }
+
   // Sort by project name for consistent ordering
   sessions.sort((a, b) => a.project.localeCompare(b.project))
 
@@ -92,4 +98,38 @@ export async function discoverClaudeSessions(): Promise<ActiveClaudeSession[]> {
 
 export function clearSessionCache(): void {
   cache = null
+}
+
+const SUMMARY_MAX_LENGTH = 150
+
+function getLastTranscriptMessage(cwd: string): string | undefined {
+  const home = process.env.HOME
+  if (!home) return undefined
+
+  const slug = cwd.replace(/\//g, '-')
+  const projectDir = join(home, '.claude', 'projects', slug)
+
+  try {
+    const files = readdirSync(projectDir)
+      .filter(f => f.endsWith('.jsonl'))
+      .map(f => {
+        const fullPath = join(projectDir, f)
+        return { path: fullPath, mtime: statSync(fullPath).mtimeMs }
+      })
+      .sort((a, b) => b.mtime - a.mtime)
+
+    if (files.length === 0) return undefined
+
+    // Use the existing transcript reader on the most recent file
+    const text = extractLastAssistantText(files[0]!.path)
+    if (text.startsWith('(')) return undefined // error messages like "(No assistant message...)"
+
+    // Truncate for WhatsApp/Telegram display
+    if (text.length > SUMMARY_MAX_LENGTH) {
+      return text.slice(0, SUMMARY_MAX_LENGTH - 3) + '...'
+    }
+    return text
+  } catch {
+    return undefined
+  }
 }
