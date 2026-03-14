@@ -22,6 +22,9 @@ export default defineEventHandler(async (event) => {
 
   const project = body.cwd ? basename(body.cwd) : 'unknown'
 
+  // Look up per-project routing rule
+  const routingRule = getRoutingForProject(project)
+
   // Build the summary based on hook type
   let summary: string
   if (hookEvent === 'Stop') {
@@ -45,21 +48,35 @@ export default defineEventHandler(async (event) => {
   const messageIds: { whatsapp?: string, telegram?: number } = {}
   const channels: string[] = []
 
-  if (remote.channels.whatsapp && settings.whatsapp.enabled && settings.whatsapp.phoneNumber) {
+  // WhatsApp: use routed group JID if available, otherwise default
+  if (remote.channels.whatsapp && settings.whatsapp.enabled) {
     const text = formatRemoteWhatsApp({ project, summary, hookEvent, timeoutMinutes: remote.timeoutMinutes })
-    const waId = await sendWhatsAppMessageForRemote(settings.whatsapp.phoneNumber, text)
-    if (waId) {
-      messageIds.whatsapp = waId
-      channels.push('whatsapp')
+
+    if (routingRule?.whatsappJid) {
+      const waId = await sendWhatsAppMessageToJidForRemote(routingRule.whatsappJid, text)
+      if (waId) {
+        messageIds.whatsapp = waId
+        channels.push('whatsapp')
+      }
+    } else if (settings.whatsapp.phoneNumber) {
+      const waId = await sendWhatsAppMessageForRemote(settings.whatsapp.phoneNumber, text)
+      if (waId) {
+        messageIds.whatsapp = waId
+        channels.push('whatsapp')
+      }
     }
   }
 
-  if (remote.channels.telegram && settings.telegram.enabled && settings.telegram.botToken && settings.telegram.chatId) {
-    const text = formatRemoteTelegram({ project, summary, hookEvent, timeoutMinutes: remote.timeoutMinutes })
-    const tgId = await sendTelegramMessageForRemote(settings.telegram.botToken, settings.telegram.chatId, text)
-    if (tgId) {
-      messageIds.telegram = tgId
-      channels.push('telegram')
+  // Telegram: use routed chat ID if available, otherwise default
+  if (remote.channels.telegram && settings.telegram.enabled && settings.telegram.botToken) {
+    const targetChatId = routingRule?.telegramChatId ?? settings.telegram.chatId
+    if (targetChatId) {
+      const text = formatRemoteTelegram({ project, summary, hookEvent, timeoutMinutes: remote.timeoutMinutes })
+      const tgId = await sendTelegramMessageForRemote(settings.telegram.botToken, targetChatId, text)
+      if (tgId) {
+        messageIds.telegram = tgId
+        channels.push('telegram')
+      }
     }
   }
 

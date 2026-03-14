@@ -15,6 +15,7 @@ const tabItems = computed<TabsItem[]>(() => [
   { label: t('whatsapp.tab'), icon: 'i-lucide-message-circle', value: 'whatsapp', slot: 'whatsapp' },
   { label: t('telegram.tab'), icon: 'i-lucide-send', value: 'telegram', slot: 'telegram' },
   { label: t('remote.tab'), icon: 'i-lucide-smartphone', value: 'remote', slot: 'remote' },
+  { label: t('routing.tab'), icon: 'i-lucide-route', value: 'routing', slot: 'routing' },
 ])
 </script>
 
@@ -56,6 +57,12 @@ const tabItems = computed<TabsItem[]>(() => [
       <template #remote>
         <div class="py-4">
           <MonitoringRemoteMode />
+        </div>
+      </template>
+
+      <template #routing>
+        <div class="py-4">
+          <MonitoringRemoteRouting />
         </div>
       </template>
     </UTabs>

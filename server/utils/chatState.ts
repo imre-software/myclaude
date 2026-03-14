@@ -1,11 +1,13 @@
+import { basename } from 'node:path'
 import type { ChatChannel, ChatFlowContext, ChatAction, ActiveClaudeSession } from '~~/app/types/remote'
 
 const INACTIVITY_TIMEOUT = 15 * 60 * 1000 // 15 minutes
 
-const states = new Map<ChatChannel, ChatFlowContext>()
+// Keyed by chat identifier: 'telegram:12345', 'whatsapp:972501234@s.whatsapp.net', etc.
+const states = new Map<string, ChatFlowContext>()
 
-function getContext(channel: ChatChannel): ChatFlowContext {
-  let ctx = states.get(channel)
+function getContext(chatId: string): ChatFlowContext {
+  let ctx = states.get(chatId)
   if (!ctx) {
     ctx = {
       state: 'idle',
@@ -13,7 +15,7 @@ function getContext(channel: ChatChannel): ChatFlowContext {
       selectedSession: null,
       lastActivity: Date.now(),
     }
-    states.set(channel, ctx)
+    states.set(chatId, ctx)
   }
 
   // Auto-reset on inactivity
@@ -27,8 +29,8 @@ function getContext(channel: ChatChannel): ChatFlowContext {
   return ctx
 }
 
-function resetContext(channel: ChatChannel): void {
-  states.set(channel, {
+function resetContext(chatId: string): void {
+  states.set(chatId, {
     state: 'idle',
     sessions: [],
     selectedSession: null,
@@ -39,43 +41,49 @@ function resetContext(channel: ChatChannel): void {
 const CANCEL_COMMANDS = new Set(['cancel', 'exit', 'quit'])
 const BACK_COMMANDS = new Set(['back', 'sessions', 'list'])
 
-export async function handleChatMessage(channel: ChatChannel, text: string): Promise<ChatAction | null> {
+export async function handleChatMessage(
+  channel: ChatChannel,
+  chatId: string,
+  text: string,
+  routedProject?: string,
+): Promise<ChatAction | null> {
   const normalized = text.trim().toLowerCase()
+  const stateKey = `${channel}:${chatId}`
 
   // "kill" cancels all pending hook requests and running executors
   if (normalized === 'kill') {
     cancelPending()
     killAllExecutors()
-    resetContext(channel)
+    resetContext(stateKey)
     return { type: 'reset' }
   }
 
   // Global cancel from any state
   if (CANCEL_COMMANDS.has(normalized)) {
     killAllExecutors()
-    resetContext(channel)
+    resetContext(stateKey)
     return { type: 'reset' }
   }
 
-  const ctx = getContext(channel)
+  const ctx = getContext(stateKey)
 
   if (ctx.state === 'idle') {
     // Only activate when message contains "claude"
     if (!normalized.includes('claude')) {
       return null
     }
-    return await handleIdle(channel, ctx)
+    return await handleIdle(stateKey, ctx, routedProject)
   }
 
   if (ctx.state === 'selecting') {
-    return await handleSelection(channel, ctx, normalized)
+    return await handleSelection(stateKey, ctx, normalized)
   }
 
   if (ctx.state === 'chatting') {
     // "back" returns to session list, kills any running process
     if (BACK_COMMANDS.has(normalized)) {
       killAllExecutors()
-      return await handleIdle(channel, ctx)
+      return await handleIdle(stateKey, ctx, routedProject)
     }
     // In chatting state, everything is handled by hooks (user swipe-replies to Claude's messages)
     return { type: 'chatting-hint' }
@@ -84,11 +92,16 @@ export async function handleChatMessage(channel: ChatChannel, text: string): Pro
   return { type: 'reset' }
 }
 
-async function handleIdle(channel: ChatChannel, ctx: ChatFlowContext): Promise<ChatAction> {
-  const sessions = await discoverClaudeSessions()
+async function handleIdle(stateKey: string, ctx: ChatFlowContext, routedProject?: string): Promise<ChatAction> {
+  let sessions = await discoverClaudeSessions()
+
+  // If from a routed group, only show sessions for that project
+  if (routedProject) {
+    sessions = sessions.filter(s => basename(s.cwd) === routedProject)
+  }
 
   if (sessions.length === 0) {
-    resetContext(channel)
+    resetContext(stateKey)
     return { type: 'no-sessions' }
   }
 
@@ -98,7 +111,7 @@ async function handleIdle(channel: ChatChannel, ctx: ChatFlowContext): Promise<C
     ctx.state = 'chatting'
     ctx.selectedSession = session
     ctx.sessions = sessions
-    return spawnAndReturn(channel, session)
+    return spawnAndReturn(stateKey, session)
   }
 
   ctx.state = 'selecting'
@@ -106,7 +119,7 @@ async function handleIdle(channel: ChatChannel, ctx: ChatFlowContext): Promise<C
   return { type: 'session-list', sessions }
 }
 
-async function handleSelection(_channel: ChatChannel, ctx: ChatFlowContext, text: string): Promise<ChatAction> {
+async function handleSelection(stateKey: string, ctx: ChatFlowContext, text: string): Promise<ChatAction> {
   const num = parseInt(text, 10)
 
   if (isNaN(num) || num < 1 || num > ctx.sessions.length) {
@@ -116,10 +129,10 @@ async function handleSelection(_channel: ChatChannel, ctx: ChatFlowContext, text
   const session = ctx.sessions[num - 1]!
   ctx.state = 'chatting'
   ctx.selectedSession = session
-  return spawnAndReturn(_channel, session)
+  return spawnAndReturn(stateKey, session)
 }
 
-function spawnAndReturn(channel: ChatChannel, session: ActiveClaudeSession): ChatAction {
+function spawnAndReturn(stateKey: string, session: ActiveClaudeSession): ChatAction {
   const { onExit } = spawnChatSession(
     session.cwd,
     'User connected via WhatsApp/Telegram remote. Summarize what you\'ve been working on briefly.',
@@ -127,9 +140,9 @@ function spawnAndReturn(channel: ChatChannel, session: ActiveClaudeSession): Cha
 
   // When the spawned process exits, reset chat state
   onExit.then(() => {
-    const current = states.get(channel)
+    const current = states.get(stateKey)
     if (current?.selectedSession?.cwd === session.cwd) {
-      resetContext(channel)
+      resetContext(stateKey)
     }
   })
 

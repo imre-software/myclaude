@@ -25,7 +25,7 @@ export function startTelegramPolling(): void {
           message?: {
             message_id: number
             from?: { id: number }
-            chat?: { id: number }
+            chat?: { id: number, title?: string, type?: string }
             text?: string
             reply_to_message?: {
               message_id: number
@@ -42,20 +42,39 @@ export function startTelegramPolling(): void {
 
       if (!res.ok || !res.result?.length) return
 
+      // Build set of allowed chat IDs: default + all routed
+      const allowedChatIds = new Set([
+        settings.telegram.chatId,
+        ...getAllRoutedTelegramChatIds(),
+      ])
+
       for (const update of res.result) {
         lastUpdateId = update.update_id
 
         const msg = update.message
         if (!msg?.text) continue
 
-        // Only accept messages from the configured chat
-        if (String(msg.chat?.id) !== settings.telegram.chatId) continue
+        const chatIdStr = String(msg.chat?.id)
+
+        // Only accept messages from allowed chats
+        if (!allowedChatIds.has(chatIdStr)) continue
+
+        const isDefaultChat = chatIdStr === settings.telegram.chatId
+        const isReply = !!msg.reply_to_message
+
+        // Mention-only filter for non-default chats (groups)
+        if (settings.telegram.mentionOnly && !isDefaultChat && !isReply) {
+          const botUsername = settings.telegram.botName
+          if (botUsername && !msg.text.toLowerCase().includes(`@${botUsername.toLowerCase()}`)) {
+            continue
+          }
+        }
 
         // "kill" from any context cancels all pending hooks + executors
         if (msg.text.trim().toLowerCase() === 'kill') {
           cancelPending()
           killAllExecutors()
-          sendTelegramMessagePlain(settings.telegram.botToken, settings.telegram.chatId, 'All pending tasks and processes killed.')
+          sendTelegramMessagePlain(settings.telegram.botToken, chatIdStr, 'All pending tasks and processes killed.')
           continue
         }
 
@@ -65,11 +84,14 @@ export function startTelegramPolling(): void {
           // Try hook-reply flow first; if no pending hook matches, fall through to chat
           const delivered = deliverReply(msg.text, replyToId)
           if (!delivered) {
-            handleTelegramChatMessage(settings.telegram.botToken, settings.telegram.chatId, msg.text)
+            // Look up routing for this chat
+            const routingRule = !isDefaultChat ? getRoutingForTelegramChat(chatIdStr) : null
+            handleTelegramChatMessage(settings.telegram.botToken, chatIdStr, msg.text, routingRule?.projectName)
           }
         } else {
           // New message (not a reply) - route to chat flow
-          handleTelegramChatMessage(settings.telegram.botToken, settings.telegram.chatId, msg.text)
+          const routingRule = !isDefaultChat ? getRoutingForTelegramChat(chatIdStr) : null
+          handleTelegramChatMessage(settings.telegram.botToken, chatIdStr, msg.text, routingRule?.projectName)
         }
       }
     } catch (err) {
@@ -90,9 +112,9 @@ export function isTelegramPolling(): boolean {
   return pollingInterval !== null
 }
 
-async function handleTelegramChatMessage(botToken: string, chatId: string, text: string): Promise<void> {
+async function handleTelegramChatMessage(botToken: string, chatId: string, text: string, routedProject?: string): Promise<void> {
   try {
-    const action = await handleChatMessage('telegram', text)
+    const action = await handleChatMessage('telegram', chatId, text, routedProject)
     if (!action) return // message ignored (no "claude" keyword while idle)
     const response = formatChatActionTelegram(action)
     await sendTelegramMessagePlain(botToken, chatId, response)

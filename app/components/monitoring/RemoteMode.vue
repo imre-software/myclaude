@@ -103,7 +103,8 @@ async function handleToggleChannel(channel: 'whatsapp' | 'telegram', value: bool
   await loadStatus()
 }
 
-async function handleTimeoutChange(value: number) {
+async function handleTimeoutChange(value: number | undefined) {
+  if (value === undefined) return
   await $fetch('/api/remote/settings', {
     method: 'PUT',
     body: { timeoutMinutes: value },
@@ -309,7 +310,7 @@ onUnmounted(() => {
         <h4 class="text-base font-medium">{{ t('remote.timeoutSection') }}</h4>
         <p class="text-sm text-muted">{{ t('remote.timeoutDesc') }}</p>
         <div class="flex items-center gap-4">
-          <URange
+          <USlider
             :model-value="status.timeoutMinutes"
             :min="15"
             :max="120"

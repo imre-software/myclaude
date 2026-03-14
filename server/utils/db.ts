@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs'
 const DATA_DIR = join(process.cwd(), '.data')
 const DB_PATH = join(DATA_DIR, 'claude-stats.db')
 
-const CURRENT_SCHEMA_VERSION = 7
+const CURRENT_SCHEMA_VERSION = 8
 
 let db: Database.Database | null = null
 
@@ -187,6 +187,22 @@ function ensureSchema(database: Database.Database): void {
         created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
         replied_at TEXT,
         status TEXT NOT NULL DEFAULT 'pending'
+      )
+    `)
+  }
+
+  if (currentVersion < 8) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS project_routing (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_name TEXT NOT NULL UNIQUE,
+        telegram_chat_id TEXT,
+        telegram_chat_title TEXT,
+        whatsapp_jid TEXT,
+        whatsapp_name TEXT,
+        whatsapp_picture_url TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
       )
     `)
   }

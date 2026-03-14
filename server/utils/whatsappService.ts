@@ -2,7 +2,8 @@ import { makeWASocket, Browsers, DisconnectReason, makeCacheableSignalKeyStore, 
 import type { WAVersion } from '@whiskeysockets/baileys'
 import QRCode from 'qrcode'
 import type { WhatsAppConnectionStatus, WhatsAppStatus, WhatsAppEvent } from '~~/app/types/whatsapp'
-import type { BusEvent } from './notificationBus'
+import type { DiscoveredWhatsAppGroup } from '~~/app/types/remote'
+import type { BusEvent, NotificationEvent } from './notificationBus'
 
 type WASocket = ReturnType<typeof makeWASocket>
 
@@ -116,7 +117,7 @@ function registerBusListener(): void {
       }
     }
 
-    const text = formatWhatsAppMessage(event)
+    const text = formatWhatsAppMessage(event as NotificationEvent)
     sendWhatsAppMessage(settings.whatsapp.phoneNumber, text)
   })
 }
@@ -210,26 +211,30 @@ export async function connectWhatsApp(): Promise<void> {
       const settings = getNotificationSettings()
       if (!settings.remoteMode?.enabled || !settings.remoteMode.channels.whatsapp) return
 
+      // Build set of accepted JIDs: self-chat + all routed group JIDs
+      const routedJids = getAllRoutedWhatsAppJids()
+
       for (const msg of msgs) {
         if (!msg.message) continue
 
-        // Only accept messages from the self-chat (our own number)
-        // WhatsApp may use classic JID (@s.whatsapp.net) or LID format (@lid)
-        // For self-chat, accept both: fromMe messages to own JID, or LID-based self-chat
         const senderJid = msg.key.remoteJid
-        if (!senderJid || !settings.whatsapp.phoneNumber) continue
-        const expectedJid = settings.whatsapp.phoneNumber.replace('+', '') + '@s.whatsapp.net'
-        const isSelfJid = senderJid === expectedJid
+        if (!senderJid) continue
+
+        // Accept self-chat (own number JID or LID) and routed group JIDs
+        const expectedJid = settings.whatsapp.phoneNumber
+          ? settings.whatsapp.phoneNumber.replace('+', '') + '@s.whatsapp.net'
+          : ''
+        const isSelfJid = expectedJid && senderJid === expectedJid
         const isLidSelfChat = senderJid.endsWith('@lid')
-        if (!isSelfJid && !isLidSelfChat) {
-          console.log('[whatsapp-chat] skipping message from', senderJid)
+        const isRoutedGroup = routedJids.has(senderJid)
+
+        if (!isSelfJid && !isLidSelfChat && !isRoutedGroup) {
           continue
         }
 
         // Skip our own outgoing messages (sent via sendMessage)
         if (msg.key.id && sentMessageIds.has(msg.key.id)) {
           sentMessageIds.delete(msg.key.id)
-          console.log('[whatsapp-chat] skipping own outgoing message', msg.key.id)
           continue
         }
 
@@ -239,15 +244,17 @@ export async function connectWhatsApp(): Promise<void> {
         const quotedMessageId = contextInfo?.stanzaId
         const text = extendedText?.text ?? msg.message.conversation
 
-        console.log('[whatsapp-chat] incoming:', { text, fromMe: msg.key.fromMe, quotedMessageId, msgId: msg.key.id })
-
         if (!text) continue
+
+        // Determine routing context for this message
+        const routingRule = isRoutedGroup ? getRoutingForWhatsAppJid(senderJid) : null
+        const replyJid = senderJid
 
         // "kill" from any context cancels all pending hooks + executors
         if (text.trim().toLowerCase() === 'kill') {
           cancelPending()
           killAllExecutors()
-          sendWhatsAppMessage(settings.whatsapp.phoneNumber, 'All pending tasks and processes killed.')
+          sendWhatsAppMessageToJid(replyJid, 'All pending tasks and processes killed.')
           continue
         }
 
@@ -255,11 +262,11 @@ export async function connectWhatsApp(): Promise<void> {
           // Try hook-reply flow first; if no pending hook matches, fall through to chat
           const delivered = deliverReply(text, quotedMessageId)
           if (!delivered) {
-            handleWhatsAppChatMessage(settings.whatsapp.phoneNumber, text)
+            handleWhatsAppChatMessage(replyJid, text, routingRule?.projectName)
           }
         } else {
           // New message (not a reply) - route to chat flow
-          handleWhatsAppChatMessage(settings.whatsapp.phoneNumber, text)
+          handleWhatsAppChatMessage(replyJid, text, routingRule?.projectName)
         }
       }
     })
@@ -301,6 +308,7 @@ export function getWhatsAppStatus(): WhatsAppStatus {
   }
 }
 
+// Send to a phone number (builds JID from number)
 export async function sendWhatsAppMessage(recipient: string, text: string): Promise<boolean> {
   if (!sock || connectionStatus !== 'connected') {
     enqueueMessage(recipient, text)
@@ -318,6 +326,20 @@ export async function sendWhatsAppMessage(recipient: string, text: string): Prom
   }
 }
 
+// Send directly to a JID (works for both personal and group JIDs)
+export async function sendWhatsAppMessageToJid(jid: string, text: string): Promise<boolean> {
+  if (!sock || connectionStatus !== 'connected') return false
+
+  try {
+    const result = await sock.sendMessage(jid, { text })
+    if (result?.key?.id) sentMessageIds.add(result.key.id)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// Send to phone number for remote (returns message_id for reply matching)
 export async function sendWhatsAppMessageForRemote(recipient: string, text: string): Promise<string | null> {
   if (!sock || connectionStatus !== 'connected') return null
 
@@ -331,6 +353,54 @@ export async function sendWhatsAppMessageForRemote(recipient: string, text: stri
   }
 }
 
+// Send to JID for remote (returns message_id for reply matching)
+export async function sendWhatsAppMessageToJidForRemote(jid: string, text: string): Promise<string | null> {
+  if (!sock || connectionStatus !== 'connected') return null
+
+  try {
+    const result = await sock.sendMessage(jid, { text })
+    if (result?.key?.id) sentMessageIds.add(result.key.id)
+    return result?.key?.id ?? null
+  } catch {
+    return null
+  }
+}
+
+// Discover all WhatsApp groups the user is participating in
+export async function getWhatsAppGroups(): Promise<DiscoveredWhatsAppGroup[]> {
+  if (!sock || connectionStatus !== 'connected') {
+    console.warn('[whatsapp] getWhatsAppGroups called but socket not connected:', connectionStatus)
+    return []
+  }
+
+  const groups = await sock.groupFetchAllParticipating()
+  const results: DiscoveredWhatsAppGroup[] = []
+
+  // Fetch profile pictures in parallel for better performance
+  const entries = Object.entries(groups)
+  const picturePromises = entries.map(async ([jid]) => {
+    try {
+      return await sock!.profilePictureUrl(jid, 'preview') ?? null
+    } catch {
+      return null
+    }
+  })
+  const pictures = await Promise.all(picturePromises)
+
+  for (let i = 0; i < entries.length; i++) {
+    const [jid, meta] = entries[i]!
+    results.push({
+      jid,
+      name: meta.subject,
+      size: meta.size ?? meta.participants.length,
+      pictureUrl: pictures[i] ?? null,
+      desc: meta.desc ?? null,
+    })
+  }
+
+  return results.sort((a, b) => a.name.localeCompare(b.name))
+}
+
 export function tryAutoReconnect(): void {
   if (connectionStatus !== 'disconnected') return
   if (hasAuthState()) {
@@ -338,14 +408,14 @@ export function tryAutoReconnect(): void {
   }
 }
 
-async function handleWhatsAppChatMessage(phoneNumber: string, text: string): Promise<void> {
+async function handleWhatsAppChatMessage(replyJid: string, text: string, routedProject?: string): Promise<void> {
   try {
-    const action = await handleChatMessage('whatsapp', text)
+    const action = await handleChatMessage('whatsapp', replyJid, text, routedProject)
     if (!action) return // message ignored (no "claude" keyword while idle)
     const response = formatChatActionWhatsApp(action)
-    await sendWhatsAppMessage(phoneNumber, response)
+    await sendWhatsAppMessageToJid(replyJid, response)
   } catch (err) {
     if (import.meta.dev) console.error('[whatsapp] chat message error:', err)
-    await sendWhatsAppMessage(phoneNumber, 'An error occurred processing your message.')
+    await sendWhatsAppMessageToJid(replyJid, 'An error occurred processing your message.')
   }
 }

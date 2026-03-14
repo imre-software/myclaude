@@ -60,6 +60,32 @@ export type ChatAction =
   | { type: 'reset' }
   | { type: 'invalid-selection', max: number }
 
+export interface ProjectRoutingRule {
+  id: number
+  projectName: string
+  telegramChatId: string | null
+  telegramChatTitle: string | null
+  whatsappJid: string | null
+  whatsappName: string | null
+  whatsappPictureUrl: string | null
+  enabled: boolean
+  createdAt: string
+}
+
+export interface DiscoveredTelegramGroup {
+  id: string
+  title: string
+  type: string
+}
+
+export interface DiscoveredWhatsAppGroup {
+  jid: string
+  name: string
+  size: number
+  pictureUrl: string | null
+  desc: string | null
+}
+
 export const REMOTE_MODE_DEFAULTS: RemoteModeSettings = {
   enabled: false,
   hooks: {

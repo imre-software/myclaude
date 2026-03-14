@@ -38,6 +38,7 @@ export interface NotificationSettings {
     botToken: string
     chatId: string
     botName: string
+    mentionOnly: boolean
   }
   remoteMode: {
     enabled: boolean
@@ -108,6 +109,7 @@ export const NOTIFICATION_DEFAULTS: NotificationSettings = {
     botToken: '',
     chatId: '',
     botName: '',
+    mentionOnly: false,
   },
   remoteMode: {
     enabled: false,
