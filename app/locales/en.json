@@ -40,7 +40,9 @@
     "totalSessions": "Total Sessions",
     "totalCost": "Total Cost",
     "avgCost": "Avg Cost/Session",
-    "avgDuration": "Avg Duration"
+    "avgDuration": "Avg Duration",
+    "allProjects": "All Projects",
+    "filterByProject": "Filter by project"
   },
   "projects": {
     "title": "Projects",
@@ -385,6 +387,48 @@
     "saveFailed": "Failed to save routing rule",
     "deleteFailed": "Failed to delete routing rule",
     "notConnected": "Not connected"
+  },
+  "update": {
+    "available": "Version {version} is available",
+    "install": "Update Now",
+    "later": "Later",
+    "downloading": "Downloading update... {percent}%"
+  },
+  "onboarding": {
+    "welcomeTitle": "Welcome to Claude Stats",
+    "welcomeDesc": "Your personal dashboard for monitoring Claude Code usage, costs, rate limits, and more.",
+    "getStarted": "Get Started",
+    "cliTitle": "Claude Code CLI",
+    "cliInstalled": "Claude Code is installed",
+    "cliNotInstalled": "Claude Code CLI needs to be installed. Run this in your terminal:",
+    "authTitle": "Authentication",
+    "authDone": "Authenticated successfully",
+    "authNotDone": "Sign in to Claude Code by running this in your terminal:",
+    "syncTitle": "Sync Sessions",
+    "syncDone": "Sessions synced",
+    "syncDesc": "Scan your local Claude Code session files and import them into the dashboard.",
+    "syncNow": "Sync Now",
+    "syncHint": "If you have not used Claude Code yet, use it to create at least one session first.",
+    "doneTitle": "All Set",
+    "doneDesc": "Your dashboard is ready. Explore your usage stats, monitor rate limits, and configure notifications.",
+    "openDashboard": "Open Dashboard",
+    "next": "Next",
+    "recheck": "Check again",
+    "skip": "Skip setup"
+  },
+  "notificationCenter": {
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "empty": "No notifications yet",
+    "justNow": "Just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
+  },
+  "export": {
+    "button": "Export",
+    "csv": "CSV",
+    "json": "JSON"
   },
   "source": {
     "estimated": "Estimated",

@@ -26,7 +26,7 @@ const rotationWarning = computed(() =>
   <div class="flex flex-col gap-6 p-8">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <h1 class="text-2xl font-bold">{{ t('projects.title') }}</h1>
-      <StatsFilterToolbar />
+      <StatsFilterToolbar export-endpoint="/api/export/projects" export-filename="projects" />
     </div>
 
     <StatsProjectsKpiGrid :projects="projects ?? []" />

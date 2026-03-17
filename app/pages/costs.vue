@@ -21,7 +21,7 @@ const rotationWarning = computed(() =>
   <div class="flex flex-col gap-6 p-8">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <h1 class="text-2xl font-bold">{{ t('costs.title') }}</h1>
-      <StatsFilterToolbar />
+      <StatsFilterToolbar export-endpoint="/api/export/costs" export-filename="costs" />
     </div>
 
     <StatsDataSourceNote :text="sourceNote" :warning="rotationWarning" />

@@ -8,12 +8,33 @@ const settingsStore = useSettingsStore()
 const usageStore = useUsageStore()
 const notificationStore = useNotificationStore()
 
-onMounted(() => {
+const isOnboarding = ref(false)
+const isOnboardingChecked = ref(false)
+
+onMounted(async () => {
+  try {
+    const status = await $fetch<{ completed: boolean }>('/api/onboarding/status')
+    isOnboarding.value = !status.completed
+  } catch {
+    // If check fails, proceed normally
+  }
+  isOnboardingChecked.value = true
+
+  if (!isOnboarding.value) {
+    statsStore.startSync()
+    settingsStore.loadAll()
+    usageStore.load()
+    notificationStore.init()
+  }
+})
+
+function handleOnboardingComplete() {
+  isOnboarding.value = false
   statsStore.startSync()
   settingsStore.loadAll()
   usageStore.load()
   notificationStore.init()
-})
+}
 
 function handleRefresh() {
   statsStore.forceSync()
@@ -157,6 +178,21 @@ const syncPercent = computed<number | null>(() => {
       </template>
     </UDashboardPanel>
   </UDashboardGroup>
+
+  <!-- Auto-update banner -->
+  <UpdateBanner />
+
+  <!-- Onboarding wizard -->
+  <UModal
+    :open="isOnboarding && isOnboardingChecked"
+    :dismissible="false"
+    :close="false"
+    :ui="{ content: 'max-w-lg' }"
+  >
+    <template #content>
+      <OnboardingWizard @complete="handleOnboardingComplete" />
+    </template>
+  </UModal>
 
   <!-- First sync: centered modal -->
   <UModal

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { h } from 'vue'
 import type { TableColumn } from '@nuxt/ui'
-import type { SessionSummary } from '~/types/stats'
+import type { SessionSummary, ProjectStats } from '~/types/stats'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -9,9 +9,18 @@ const store = useStatsStore()
 
 const page = ref(1)
 const limit = ref(25)
+const selectedProject = ref<string>('')
 
-// Reset to page 1 when date range changes
-watch(() => [store.dateStart, store.dateEnd], () => {
+// Fetch available projects for the filter dropdown
+const { data: projects } = useFetch<ProjectStats[]>('/api/stats/projects')
+
+const projectOptions = computed(() => {
+  const opts = (projects.value ?? []).map(p => ({ label: p.name, value: p.name }))
+  return [{ label: t('sessions.allProjects'), value: '' }, ...opts]
+})
+
+// Reset to page 1 when filters change
+watch(() => [store.dateStart, store.dateEnd, selectedProject.value], () => {
   page.value = 1
 })
 
@@ -23,6 +32,7 @@ const { data: response, status } = useFetch('/api/stats/sessions', {
     order: 'desc',
     from: store.dateStart || undefined,
     to: store.dateEnd || undefined,
+    project: selectedProject.value || undefined,
   })),
 })
 
@@ -71,6 +81,16 @@ const handleRowClick = (_e: Event, row: { original: SessionSummary }) => {
 
 <template>
   <div class="flex flex-col gap-4">
+    <div class="flex items-center gap-4">
+      <USelect
+        v-model="selectedProject"
+        :items="projectOptions"
+        :placeholder="t('sessions.filterByProject')"
+        size="sm"
+        class="w-60"
+      />
+    </div>
+
     <UTable
       :data="sessions"
       :columns="columns"

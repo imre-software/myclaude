@@ -14,6 +14,13 @@ const presets: Array<{ label: string, value: DateRangePreset }> = [
 
 const isCustom = computed(() => store.dateRange.preset === 'custom')
 
+const customLabel = computed(() => {
+  if (isCustom.value && store.dateRange.start && store.dateRange.end) {
+    return `${formatDate(store.dateRange.start)} - ${formatDate(store.dateRange.end)}`
+  }
+  return t('filters.custom')
+})
+
 const customRange = ref()
 
 const handlePresetClick = (preset: DateRangePreset) => {
@@ -41,12 +48,25 @@ watch(customRange, (value) => {
       size="sm"
       @click="handlePresetClick(preset.value)"
     />
-    <UInputDate
-      v-model="customRange"
-      range
-      size="sm"
-      :variant="isCustom ? 'outline' : 'ghost'"
-      :color="isCustom ? 'primary' : 'neutral'"
-    />
+
+    <UPopover>
+      <UButton
+        icon="i-lucide-calendar"
+        :label="customLabel"
+        :variant="isCustom ? 'outline' : 'ghost'"
+        :color="isCustom ? 'primary' : 'neutral'"
+        size="sm"
+      />
+
+      <template #content>
+        <div class="p-3">
+          <UInputDate
+            v-model="customRange"
+            range
+            size="sm"
+          />
+        </div>
+      </template>
+    </UPopover>
   </div>
 </template>

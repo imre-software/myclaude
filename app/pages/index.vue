@@ -21,7 +21,7 @@ const rotationWarning = computed(() =>
   <div class="flex flex-col gap-6 p-8">
     <div class="sticky top-0 z-10 -mx-8 -mt-8 flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 bg-white px-8 py-6 dark:border-gray-800 dark:bg-gray-900">
       <h1 class="text-2xl font-bold">{{ t('overview.title') }}</h1>
-      <StatsFilterToolbar />
+      <StatsFilterToolbar export-endpoint="/api/export/daily" export-filename="daily-activity" />
     </div>
 
     <StatsKpiGrid />
