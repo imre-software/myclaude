@@ -56,12 +56,12 @@ fn reexec_inside_app_bundle() {
         None => return,
     };
 
-    let app_dir = exe_dir.join("Claude Command.app");
+    let app_dir = exe_dir.join("My Claude.app");
     let macos_dir = app_dir.join("Contents").join("MacOS");
 
     // Kill any leftover instance from a previous dev session
     let _ = std::process::Command::new("pkill")
-        .args(["-f", "Claude Command.app/Contents/MacOS"])
+        .args(["-f", "My Claude.app/Contents/MacOS"])
         .status();
     std::thread::sleep(std::time::Duration::from_millis(300));
 
@@ -75,9 +75,9 @@ fn reexec_inside_app_bundle() {
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.claudecommand.desktop</string>
+    <string>cc.imre.myclaude</string>
     <key>CFBundleName</key>
-    <string>Claude Command</string>
+    <string>My Claude</string>
     <key>CFBundleExecutable</key>
     <string>{exe_name}</string>
     <key>CFBundlePackageType</key>
@@ -263,7 +263,7 @@ fn main() {
 
             let url = WebviewUrl::External(SERVER_URL.parse().unwrap());
             WebviewWindowBuilder::new(app, "main", url)
-                .title("Claude Command")
+                .title("My Claude")
                 .inner_size(1280.0, 800.0)
                 .min_inner_size(900.0, 600.0)
                 .build()
@@ -296,7 +296,7 @@ fn main() {
             TrayIconBuilder::new()
                 .icon(icon)
                 .menu(&menu)
-                .tooltip("Claude Command")
+                .tooltip("My Claude")
                 .on_menu_event(|app, event| {
                     match event.id().as_ref() {
                         "show" => {

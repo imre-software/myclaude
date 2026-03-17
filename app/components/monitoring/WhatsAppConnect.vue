@@ -153,7 +153,7 @@ onMounted(() => {
       </div>
 
       <!-- Session management -->
-      <div class="border-t border-gray-200 pt-4 dark:border-gray-800">
+      <div class="border-t border-default pt-4">
         <p class="text-sm text-muted mb-3">{{ t('whatsapp.sessionSectionDesc') }}</p>
         <div class="flex gap-2">
           <UButton

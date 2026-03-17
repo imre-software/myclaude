@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/schema/master/tauri-conf-v2.json",
-  "productName": "Claude Command",
+  "productName": "My Claude",
   "version": "0.1.0",
-  "identifier": "com.claudecommand.desktop",
+  "identifier": "cc.imre.myclaude",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:3019",
@@ -31,9 +31,9 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIyNTRFMTIzNTJFNTNEREUKUldUZVBlVlNJK0ZVc3V3VFFtOGVUaURvZldieVdWNDh6Q1RrQ2M4SGlDNlZRNGZ5dUFkcWpJTVoK",
       "endpoints": [
-        "https://github.com/OWNER/REPO/releases/latest/download/latest.json"
+        "https://github.com/imresoftware/myclaude/releases/latest/download/latest.json"
       ]
     }
   }

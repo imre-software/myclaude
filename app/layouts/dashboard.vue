@@ -149,12 +149,12 @@ const syncPercent = computed<number | null>(() => {
 
 <template>
   <UDashboardGroup>
-    <UDashboardSidebar>
+    <UDashboardSidebar :ui="{ root: 'bg-default' }">
       <template #header>
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <UIcon name="i-lucide-terminal" class="size-5 text-primary" />
-            <span class="text-base font-semibold">Claude Stats</span>
+            <span class="text-base font-semibold">My Claude</span>
           </div>
           <UButton
             icon="i-lucide-rotate-cw"
@@ -170,9 +170,16 @@ const syncPercent = computed<number | null>(() => {
         :items="navItems"
         orientation="vertical"
       />
+
+      <template #footer>
+        <div class="flex items-center justify-between px-2">
+          <span class="text-sm text-muted">v0.1.0</span>
+          <UColorModeButton class="cursor-pointer" />
+        </div>
+      </template>
     </UDashboardSidebar>
 
-    <UDashboardPanel :ui="{ body: 'p-0 sm:p-0 gap-0' }">
+    <UDashboardPanel :ui="{ root: 'bg-default', body: 'p-0 sm:p-0 gap-0' }">
       <template #body>
         <slot />
       </template>

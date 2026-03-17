@@ -76,7 +76,7 @@ const formatTime = (isoDate: string) => {
 
     <template #content>
       <div class="w-80 max-h-96 flex flex-col">
-        <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+        <div class="flex items-center justify-between border-b border-default px-4 py-3">
           <span class="text-base font-semibold">{{ t('notificationCenter.title') }}</span>
           <UButton
             v-if="store.unreadCount > 0"
@@ -100,7 +100,7 @@ const formatTime = (isoDate: string) => {
           <button
             v-for="item in history"
             :key="item.id"
-            class="flex w-full cursor-pointer gap-3 px-4 py-3 text-start transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            class="flex w-full cursor-pointer gap-3 px-4 py-3 text-start transition-colors hover:bg-elevated"
             :class="{ 'bg-primary-50/50 dark:bg-primary-900/10': !item.read }"
             @click="handleMarkRead(item.id)"
           >

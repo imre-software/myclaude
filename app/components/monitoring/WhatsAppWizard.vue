@@ -233,7 +233,7 @@ onUnmounted(() => {
 
         <template #qr>
           <div class="flex flex-col items-center gap-4 py-4">
-            <div v-if="qrDataUrl" class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700">
+            <div v-if="qrDataUrl" class="rounded-xl border border-default bg-white p-4 dark:bg-white">
               <img
                 :src="qrDataUrl"
                 :alt="t('whatsapp.wizardQrTitle')"

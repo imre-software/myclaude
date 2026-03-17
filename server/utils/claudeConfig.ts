@@ -409,7 +409,7 @@ export async function updateAttribution(attr: { commit?: string, pr?: string }):
 // ---- Remote Mode Hooks ----
 
 const REMOTE_SCRIPT_CONTENT = `#!/bin/bash
-# Claude Command Remote Mode - DO NOT EDIT (managed by Claude Command app)
+# My Claude Remote Mode - DO NOT EDIT (managed by My Claude app)
 curl -s --max-time 3600 -X POST \\
   -H "Content-Type: application/json" \\
   -d @- \\

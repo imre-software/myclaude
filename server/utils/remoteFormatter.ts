@@ -29,7 +29,7 @@ export function formatRemoteWhatsApp(options: RemoteMessageOptions): string {
   }
 
   lines.push('')
-  lines.push('_Claude Command - Remote Mode_')
+  lines.push('_My Claude - Remote Mode_')
   return lines.join('\n')
 }
 
@@ -57,7 +57,7 @@ export function formatRemoteTelegram(options: RemoteMessageOptions): string {
   }
 
   lines.push('')
-  lines.push('_Claude Command \\- Remote Mode_')
+  lines.push('_My Claude \\- Remote Mode_')
   return lines.join('\n')
 }
 

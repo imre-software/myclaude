@@ -244,7 +244,7 @@ onMounted(() => {
     <!-- Telegram mention-only toggle -->
     <div
       v-if="isTelegramConnected"
-      class="flex items-center justify-between rounded-lg border border-gray-200 p-4 dark:border-gray-800"
+      class="flex items-center justify-between rounded-lg border border-default p-4"
     >
       <div class="flex items-center gap-3">
         <UIcon name="i-lucide-at-sign" class="size-5 text-muted" />
@@ -283,7 +283,7 @@ onMounted(() => {
       <div
         v-for="rule in rules"
         :key="rule.id"
-        class="flex items-center justify-between rounded-lg border border-gray-200 p-4 dark:border-gray-800"
+        class="flex items-center justify-between rounded-lg border border-default p-4"
       >
         <div class="flex flex-col gap-1 min-w-0 flex-1">
           <p class="text-base font-medium truncate">{{ rule.projectName }}</p>
@@ -316,7 +316,7 @@ onMounted(() => {
       <!-- Add rule form -->
       <div
         v-if="isAdding"
-        class="flex flex-col gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-800"
+        class="flex flex-col gap-4 rounded-lg border border-default p-4"
       >
         <!-- Project name -->
         <div class="flex flex-col gap-1.5">

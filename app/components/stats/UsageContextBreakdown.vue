@@ -49,7 +49,7 @@ const headerLine = computed(() => {
         >
           <button
             v-if="cat.items.length > 0"
-            class="flex items-center justify-between py-1 text-start hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 -mx-2 transition-colors"
+            class="flex items-center justify-between py-1 text-start hover:bg-elevated rounded px-2 -mx-2 transition-colors"
             @click="toggleExpand(cat.slug)"
           >
             <span class="text-sm">

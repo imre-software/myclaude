@@ -123,7 +123,7 @@ function handleSkip() {
           class="flex size-8 items-center justify-center rounded-full text-sm transition-colors"
           :class="idx <= currentStep
             ? 'bg-primary text-white'
-            : 'bg-gray-100 text-gray-400 dark:bg-gray-800'"
+            : 'bg-elevated text-muted'"
         >
           <UIcon
             v-if="idx < currentStep"
@@ -160,7 +160,7 @@ function handleSkip() {
         </div>
         <div v-else class="flex flex-col gap-4">
           <p class="text-base text-muted">{{ t('onboarding.cliNotInstalled') }}</p>
-          <div class="rounded-lg bg-gray-50 px-4 py-3 font-mono text-sm dark:bg-gray-800">
+          <div class="rounded-lg bg-elevated px-4 py-3 font-mono text-sm">
             npm install -g @anthropic-ai/claude-code
           </div>
           <UButton
@@ -187,7 +187,7 @@ function handleSkip() {
         </div>
         <div v-else class="flex flex-col gap-4">
           <p class="text-base text-muted">{{ t('onboarding.authNotDone') }}</p>
-          <div class="rounded-lg bg-gray-50 px-4 py-3 font-mono text-sm dark:bg-gray-800">
+          <div class="rounded-lg bg-elevated px-4 py-3 font-mono text-sm">
             claude auth login
           </div>
           <UButton

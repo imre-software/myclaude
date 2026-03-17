@@ -1,2 +1,22 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+
+/* Chart dark mode - SVG text and gridlines */
+.dark svg text {
+  fill: #a1a1aa; /* zinc-400 */
+}
+
+.dark svg line,
+.dark svg .grid-line {
+  stroke: #27272a; /* zinc-800 */
+}
+
+/* Override unovis tooltip - library uses body.theme-dark but Nuxt UI uses .dark on html */
+html.dark {
+  --vis-tooltip-background-color: rgba(30, 30, 30, 0.95);
+  --vis-tooltip-text-color: #e4e4e7;
+  --vis-tooltip-title-color: #e4e4e7;
+  --vis-tooltip-border-color: #3f3f46;
+  --vis-tooltip-shadow-color: rgba(0, 0, 0, 0.95);
+  --vis-tooltip-title-border-bottom: 1px solid #3f3f46;
+}

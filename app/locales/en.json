@@ -212,7 +212,7 @@
     "description": "Get alerted when you approach rate limits so you never get caught off guard.",
     "enableDesktop": "Enable desktop notifications",
     "permissionNotDetermined": "Notification permission has not been requested yet.",
-    "permissionDenied": "Notification permission was denied. Enable it in macOS System Settings > Notifications > Claude Command.",
+    "permissionDenied": "Notification permission was denied. Enable it in macOS System Settings > Notifications > My Claude.",
     "permissionGranted": "Notifications are permitted.",
     "requestPermission": "Allow notifications",
     "thresholds": "Rate Limit Thresholds",
@@ -395,7 +395,7 @@
     "downloading": "Downloading update... {percent}%"
   },
   "onboarding": {
-    "welcomeTitle": "Welcome to Claude Stats",
+    "welcomeTitle": "Welcome to My Claude",
     "welcomeDesc": "Your personal dashboard for monitoring Claude Code usage, costs, rate limits, and more.",
     "getStarted": "Get Started",
     "cliTitle": "Claude Code CLI",

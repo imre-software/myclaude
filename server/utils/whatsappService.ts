@@ -147,7 +147,7 @@ export async function connectWhatsApp(): Promise<void> {
         keys: makeCacheableSignalKeyStore(state.keys),
       },
       printQRInTerminal: false,
-      browser: Browsers.macOS('Claude Command'),
+      browser: Browsers.macOS('My Claude'),
       keepAliveIntervalMs: 30_000,
       retryRequestDelayMs: 350,
       connectTimeoutMs: 30_000,

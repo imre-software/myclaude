@@ -11,7 +11,7 @@ export function formatWhatsAppMessage(event: NotificationEvent): string {
     lines.push(event.body)
   }
 
-  lines.push('_Claude Command_')
+  lines.push('_My Claude_')
 
   return lines.join('\n')
 }

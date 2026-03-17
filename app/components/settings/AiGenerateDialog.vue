@@ -129,7 +129,7 @@ function handleClose() {
             <span class="text-base font-medium">{{ t('settings.preview') }}</span>
             <UBadge :label="preview.name" variant="subtle" />
           </div>
-          <div class="max-h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
+          <div class="max-h-64 overflow-auto rounded-lg border border-default bg-elevated p-3">
             <pre class="whitespace-pre-wrap text-sm font-mono">{{ preview.content }}</pre>
           </div>
         </div>

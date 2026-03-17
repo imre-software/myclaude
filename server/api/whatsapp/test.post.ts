@@ -7,7 +7,7 @@ export default defineEventHandler(async () => {
 
   const sent = await sendWhatsAppMessage(
     settings.whatsapp.phoneNumber,
-    '*Test Message*\nWhatsApp notifications from Claude Command are working.\n_Claude Command_',
+    '*Test Message*\nWhatsApp notifications from My Claude are working.\n_My Claude_',
   )
 
   return { ok: sent, queued: !sent }

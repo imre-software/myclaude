@@ -279,7 +279,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Channel toggles -->
-      <div class="flex flex-col gap-4 border-t border-gray-200 pt-4 dark:border-gray-800">
+      <div class="flex flex-col gap-4 border-t border-default pt-4">
         <h4 class="text-base font-medium">{{ t('remote.channelsSection') }}</h4>
 
         <div v-if="isWhatsAppConnected" class="flex items-center justify-between">
@@ -306,7 +306,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Timeout setting -->
-      <div class="flex flex-col gap-2 border-t border-gray-200 pt-4 dark:border-gray-800">
+      <div class="flex flex-col gap-2 border-t border-default pt-4">
         <h4 class="text-base font-medium">{{ t('remote.timeoutSection') }}</h4>
         <p class="text-sm text-muted">{{ t('remote.timeoutDesc') }}</p>
         <div class="flex items-center gap-4">
@@ -324,14 +324,14 @@ onUnmounted(() => {
     </template>
 
     <!-- History -->
-    <div v-if="history.length > 0" class="flex flex-col gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
+    <div v-if="history.length > 0" class="flex flex-col gap-3 border-t border-default pt-4">
       <h4 class="text-base font-medium">{{ t('remote.historySection') }}</h4>
 
       <div class="flex flex-col gap-2">
         <div
           v-for="entry in history"
           :key="entry.id"
-          class="flex items-center justify-between rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+          class="flex items-center justify-between rounded-lg border border-default p-3"
         >
           <div class="flex flex-col gap-0.5 min-w-0">
             <div class="flex items-center gap-2">

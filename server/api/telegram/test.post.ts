@@ -5,7 +5,7 @@ export default defineEventHandler(async () => {
     throw createError({ statusCode: 400, message: 'Telegram not configured' })
   }
 
-  const text = '*Test Message*\nTelegram notifications from Claude Command are working\\.\n_Claude Command_'
+  const text = '*Test Message*\nTelegram notifications from My Claude are working\\.\n_My Claude_'
   const sent = await sendTelegramMessage(settings.telegram.botToken, settings.telegram.chatId, text)
 
   return { ok: sent }
