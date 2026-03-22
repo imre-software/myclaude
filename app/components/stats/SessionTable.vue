@@ -9,14 +9,14 @@ const store = useStatsStore()
 
 const page = ref(1)
 const limit = ref(25)
-const selectedProject = ref<string>('')
+const selectedProject = ref<string | null>(null)
 
 // Fetch available projects for the filter dropdown
 const { data: projects } = useFetch<ProjectStats[]>('/api/stats/projects')
 
 const projectOptions = computed(() => {
   const opts = (projects.value ?? []).map(p => ({ label: p.name, value: p.name }))
-  return [{ label: t('sessions.allProjects'), value: '' }, ...opts]
+  return [{ label: t('sessions.allProjects'), value: null }, ...opts]
 })
 
 // Reset to page 1 when filters change
