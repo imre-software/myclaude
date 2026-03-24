@@ -2,6 +2,7 @@ import { basename } from 'node:path'
 import type { RemoteHookPayload } from '~~/app/types/remote'
 
 const DONE_PATTERNS = /^(done|stop|finish|ok|quit|exit)$/i
+const APPROVE_PATTERNS = /^(approve|approved|yes|ok|lgtm|go|ship it)$/i
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<RemoteHookPayload>(event)
@@ -17,6 +18,7 @@ export default defineEventHandler(async (event) => {
 
   // Check if the specific hook type is enabled
   if (hookEvent === 'Stop' && !remote.hooks.stop) return {}
+  if (hookEvent === 'PreToolUse' && !remote.hooks.stop) return {}
   if (hookEvent === 'PermissionRequest' && !remote.hooks.permissionRequest) return {}
   if (hookEvent === 'Notification' && !remote.hooks.notification) return {}
 
@@ -26,8 +28,9 @@ export default defineEventHandler(async (event) => {
   const routingRule = getRoutingForProject(project)
 
   // Build the summary based on hook type
+  const routed = !!routingRule
   let summary: string
-  if (hookEvent === 'Stop') {
+  if (hookEvent === 'Stop' || hookEvent === 'PreToolUse') {
     summary = body.transcript_path
       ? extractLastAssistantText(body.transcript_path)
       : '(No transcript available)'
@@ -50,7 +53,7 @@ export default defineEventHandler(async (event) => {
 
   // WhatsApp: use routed group JID if available, otherwise default
   if (remote.channels.whatsapp && settings.whatsapp.enabled) {
-    const text = formatRemoteWhatsApp({ project, summary, hookEvent, timeoutMinutes: remote.timeoutMinutes })
+    const text = formatRemoteWhatsApp({ project, summary, hookEvent, timeoutMinutes: remote.timeoutMinutes, routed })
 
     if (routingRule?.whatsappJid) {
       const waId = await sendWhatsAppMessageToJidForRemote(routingRule.whatsappJid, text)
@@ -71,7 +74,7 @@ export default defineEventHandler(async (event) => {
   if (remote.channels.telegram && settings.telegram.enabled && settings.telegram.botToken) {
     const targetChatId = routingRule?.telegramChatId ?? settings.telegram.chatId
     if (targetChatId) {
-      const text = formatRemoteTelegram({ project, summary, hookEvent, timeoutMinutes: remote.timeoutMinutes })
+      const text = formatRemoteTelegram({ project, summary, hookEvent, timeoutMinutes: remote.timeoutMinutes, routed })
       const tgId = await sendTelegramMessageForRemote(settings.telegram.botToken, targetChatId, text)
       if (tgId) {
         messageIds.telegram = tgId
@@ -106,8 +109,16 @@ export default defineEventHandler(async (event) => {
     startTelegramPolling()
   }
 
+  const targetJids: { whatsapp?: string, telegram?: string } = {}
+  if (routingRule?.whatsappJid) {
+    targetJids.whatsapp = routingRule.whatsappJid
+  }
+  if (routingRule?.telegramChatId) {
+    targetJids.telegram = routingRule.telegramChatId
+  }
+
   const timeoutMs = remote.timeoutMinutes * 60 * 1000
-  const reply = await waitForReply(body.session_id ?? '', hookEvent, messageIds, timeoutMs)
+  const reply = await waitForReply(body.session_id ?? '', hookEvent, messageIds, targetJids, timeoutMs)
 
   // Update log
   if (reply) {
@@ -136,6 +147,25 @@ export default defineEventHandler(async (event) => {
         decision: {
           behavior: allowed ? 'allow' : 'deny',
         },
+      },
+    }
+  }
+
+  if (hookEvent === 'PreToolUse') {
+    const approved = APPROVE_PATTERNS.test((reply ?? '').trim())
+    if (approved) {
+      return {
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'allow',
+        },
+      }
+    }
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason: reply || 'No response received - plan rejected',
       },
     }
   }

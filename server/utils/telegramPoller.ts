@@ -61,9 +61,11 @@ export function startTelegramPolling(): void {
 
         const isDefaultChat = chatIdStr === settings.telegram.chatId
         const isReply = !!msg.reply_to_message
+        const routingRule = !isDefaultChat ? getRoutingForTelegramChat(chatIdStr) : null
+        const isRoutedGroup = !!routingRule
 
-        // Mention-only filter for non-default chats (groups)
-        if (settings.telegram.mentionOnly && !isDefaultChat && !isReply) {
+        // Mention-only filter for non-default, non-routed chats (groups)
+        if (settings.telegram.mentionOnly && !isDefaultChat && !isRoutedGroup && !isReply) {
           const botUsername = settings.telegram.botName
           if (botUsername && !msg.text.toLowerCase().includes(`@${botUsername.toLowerCase()}`)) {
             continue
@@ -81,17 +83,20 @@ export function startTelegramPolling(): void {
         const replyToId = msg.reply_to_message?.message_id
 
         if (replyToId) {
-          // Try hook-reply flow first; if no pending hook matches, fall through to chat
+          // Quote-reply always tries hook-reply first (backwards compatible)
           const delivered = deliverReply(msg.text, replyToId)
           if (!delivered) {
-            // Look up routing for this chat
-            const routingRule = !isDefaultChat ? getRoutingForTelegramChat(chatIdStr) : null
+            handleTelegramChatMessage(settings.telegram.botToken, chatIdStr, msg.text, routingRule?.projectName)
+          }
+        } else if (isRoutedGroup) {
+          // Routed group without reply: try delivering to pending hook for this group
+          const delivered = deliverReplyByGroupJid(msg.text, chatIdStr, 'telegram')
+          if (!delivered) {
             handleTelegramChatMessage(settings.telegram.botToken, chatIdStr, msg.text, routingRule?.projectName)
           }
         } else {
-          // New message (not a reply) - route to chat flow
-          const routingRule = !isDefaultChat ? getRoutingForTelegramChat(chatIdStr) : null
-          handleTelegramChatMessage(settings.telegram.botToken, chatIdStr, msg.text, routingRule?.projectName)
+          // Default chat or non-routed: existing behavior
+          handleTelegramChatMessage(settings.telegram.botToken, chatIdStr, msg.text)
         }
       }
     } catch (err) {

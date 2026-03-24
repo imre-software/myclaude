@@ -68,8 +68,8 @@ export async function handleChatMessage(
   const ctx = getContext(stateKey)
 
   if (ctx.state === 'idle') {
-    // Only activate when message contains "claude"
-    if (!normalized.includes('claude')) {
+    // Routed groups activate without "claude" keyword; non-routed require it
+    if (!routedProject && !normalized.includes('claude')) {
       return null
     }
     return await handleIdle(stateKey, ctx, routedProject)
@@ -85,8 +85,8 @@ export async function handleChatMessage(
       killAllExecutors()
       return await handleIdle(stateKey, ctx, routedProject)
     }
-    // In chatting state, everything is handled by hooks (user swipe-replies to Claude's messages)
-    return { type: 'chatting-hint' }
+    // In chatting state, everything is handled by hooks
+    return { type: 'chatting-hint', routed: !!ctx.routedProject }
   }
 
   return { type: 'reset' }
@@ -94,6 +94,9 @@ export async function handleChatMessage(
 
 async function handleIdle(stateKey: string, ctx: ChatFlowContext, routedProject?: string): Promise<ChatAction> {
   let sessions = await discoverClaudeSessions()
+
+  // Store routedProject in context so it persists across state transitions
+  ctx.routedProject = routedProject
 
   // If from a routed group, only show sessions for that project
   if (routedProject) {
@@ -111,7 +114,7 @@ async function handleIdle(stateKey: string, ctx: ChatFlowContext, routedProject?
     ctx.state = 'chatting'
     ctx.selectedSession = session
     ctx.sessions = sessions
-    return spawnAndReturn(stateKey, session)
+    return spawnAndReturn(stateKey, session, !!routedProject)
   }
 
   ctx.state = 'selecting'
@@ -129,10 +132,10 @@ async function handleSelection(stateKey: string, ctx: ChatFlowContext, text: str
   const session = ctx.sessions[num - 1]!
   ctx.state = 'chatting'
   ctx.selectedSession = session
-  return spawnAndReturn(stateKey, session)
+  return spawnAndReturn(stateKey, session, !!ctx.routedProject)
 }
 
-function spawnAndReturn(stateKey: string, session: ActiveClaudeSession): ChatAction {
+function spawnAndReturn(stateKey: string, session: ActiveClaudeSession, routed: boolean): ChatAction {
   const { onExit } = spawnChatSession(
     session.cwd,
     'User connected via WhatsApp/Telegram remote. Summarize what you\'ve been working on briefly.',
@@ -146,5 +149,5 @@ function spawnAndReturn(stateKey: string, session: ActiveClaudeSession): ChatAct
     }
   })
 
-  return { type: 'session-selected', session }
+  return { type: 'session-selected', session, routed }
 }

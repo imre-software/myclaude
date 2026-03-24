@@ -259,13 +259,19 @@ export async function connectWhatsApp(): Promise<void> {
         }
 
         if (quotedMessageId) {
-          // Try hook-reply flow first; if no pending hook matches, fall through to chat
+          // Quote-reply always tries hook-reply first (backwards compatible)
           const delivered = deliverReply(text, quotedMessageId)
           if (!delivered) {
             handleWhatsAppChatMessage(replyJid, text, routingRule?.projectName)
           }
+        } else if (isRoutedGroup) {
+          // Routed group without quote: try delivering to pending hook for this group
+          const delivered = deliverReplyByGroupJid(text, senderJid, 'whatsapp')
+          if (!delivered) {
+            handleWhatsAppChatMessage(replyJid, text, routingRule?.projectName)
+          }
         } else {
-          // New message (not a reply) - route to chat flow
+          // Non-routed chat (self-chat, LID): existing behavior
           handleWhatsAppChatMessage(replyJid, text, routingRule?.projectName)
         }
       }

@@ -3,11 +3,12 @@ interface RemoteMessageOptions {
   summary: string
   hookEvent: string
   timeoutMinutes: number
+  routed?: boolean
 }
 
 // WhatsApp uses simple markdown: *bold*, _italic_
 export function formatRemoteWhatsApp(options: RemoteMessageOptions): string {
-  const { project, summary, hookEvent, timeoutMinutes } = options
+  const { project, summary, hookEvent, timeoutMinutes, routed } = options
   const lines: string[] = []
 
   if (hookEvent === 'Stop') {
@@ -15,13 +16,25 @@ export function formatRemoteWhatsApp(options: RemoteMessageOptions): string {
     lines.push('')
     lines.push(summary)
     lines.push('')
-    lines.push(`_Reply with your next instruction, or "done" to let Claude stop. Auto-stops in ${timeoutMinutes} min._`)
+    lines.push(routed
+      ? `_Send your next instruction, or "done" to let Claude stop. Auto-stops in ${timeoutMinutes} min._`
+      : `_Reply with your next instruction, or "done" to let Claude stop. Auto-stops in ${timeoutMinutes} min._`)
   } else if (hookEvent === 'PermissionRequest') {
     lines.push(`*Claude needs permission in ${project}*`)
     lines.push('')
     lines.push(summary)
     lines.push('')
-    lines.push(`_Reply "allow" to approve or "deny" to reject. Auto-denies in ${timeoutMinutes} min._`)
+    lines.push(routed
+      ? `_"allow" to approve or "deny" to reject. Auto-denies in ${timeoutMinutes} min._`
+      : `_Reply "allow" to approve or "deny" to reject. Auto-denies in ${timeoutMinutes} min._`)
+  } else if (hookEvent === 'PreToolUse') {
+    lines.push(`*Claude has a plan ready${routed ? '' : ` in ${project}`}*`)
+    lines.push('')
+    lines.push(summary)
+    lines.push('')
+    lines.push(routed
+      ? `_"approve" to start or send feedback. Auto-rejects in ${timeoutMinutes} min._`
+      : `_Reply "approve" to start or send feedback. Auto-rejects in ${timeoutMinutes} min._`)
   } else if (hookEvent === 'Notification') {
     lines.push(`*Claude notification from ${project}*`)
     lines.push('')
@@ -35,7 +48,7 @@ export function formatRemoteWhatsApp(options: RemoteMessageOptions): string {
 
 // Telegram uses MarkdownV2: requires escaping special chars
 export function formatRemoteTelegram(options: RemoteMessageOptions): string {
-  const { project, summary, hookEvent, timeoutMinutes } = options
+  const { project, summary, hookEvent, timeoutMinutes, routed } = options
   const lines: string[] = []
 
   if (hookEvent === 'Stop') {
@@ -43,13 +56,25 @@ export function formatRemoteTelegram(options: RemoteMessageOptions): string {
     lines.push('')
     lines.push(escapeMd(summary))
     lines.push('')
-    lines.push(`_Reply with your next instruction, or "done" to let Claude stop\\. Auto\\-stops in ${timeoutMinutes} min\\._`)
+    lines.push(routed
+      ? `_Send your next instruction, or "done" to let Claude stop\\. Auto\\-stops in ${timeoutMinutes} min\\._`
+      : `_Reply with your next instruction, or "done" to let Claude stop\\. Auto\\-stops in ${timeoutMinutes} min\\._`)
   } else if (hookEvent === 'PermissionRequest') {
     lines.push(`*Claude needs permission in ${escapeMd(project)}*`)
     lines.push('')
     lines.push(escapeMd(summary))
     lines.push('')
-    lines.push(`_Reply "allow" to approve or "deny" to reject\\. Auto\\-denies in ${timeoutMinutes} min\\._`)
+    lines.push(routed
+      ? `_"allow" to approve or "deny" to reject\\. Auto\\-denies in ${timeoutMinutes} min\\._`
+      : `_Reply "allow" to approve or "deny" to reject\\. Auto\\-denies in ${timeoutMinutes} min\\._`)
+  } else if (hookEvent === 'PreToolUse') {
+    lines.push(`*Claude has a plan ready${routed ? '' : ` in ${escapeMd(project)}`}*`)
+    lines.push('')
+    lines.push(escapeMd(summary))
+    lines.push('')
+    lines.push(routed
+      ? `_"approve" to start or send feedback\\. Auto\\-rejects in ${timeoutMinutes} min\\._`
+      : `_Reply "approve" to start or send feedback\\. Auto\\-rejects in ${timeoutMinutes} min\\._`)
   } else if (hookEvent === 'Notification') {
     lines.push(`*Claude notification from ${escapeMd(project)}*`)
     lines.push('')
@@ -84,8 +109,12 @@ export function formatChatActionWhatsApp(action: ChatAction): string {
       }
       lines.push('')
       lines.push('Claude will message you shortly.')
-      lines.push('Reply to Claude\'s messages to continue the conversation.')
-      lines.push('Type "back" for session list or "exit" to disconnect.')
+      lines.push(action.routed
+        ? 'Send a message to continue the conversation.'
+        : 'Reply to Claude\'s messages to continue the conversation.')
+      lines.push(action.routed
+        ? 'Type "exit" to disconnect.'
+        : 'Type "back" for session list or "exit" to disconnect.')
       return lines.join('\n')
     }
 
@@ -93,7 +122,9 @@ export function formatChatActionWhatsApp(action: ChatAction): string {
       return 'No active Claude sessions found. Start Claude in a terminal first.'
 
     case 'chatting-hint':
-      return '_Reply to Claude\'s messages to continue. Type "back" for sessions or "exit" to disconnect._'
+      return action.routed
+        ? '_Send a message to continue. Type "exit" to disconnect._'
+        : '_Reply to Claude\'s messages to continue. Type "back" for sessions or "exit" to disconnect._'
 
     case 'reset':
       return 'Chat disconnected.'
@@ -116,8 +147,12 @@ export function formatChatActionTelegram(action: ChatAction): string {
       }
       lines.push('')
       lines.push('Claude will message you shortly.')
-      lines.push('Reply to Claude\'s messages to continue the conversation.')
-      lines.push('Type "back" for session list or "exit" to disconnect.')
+      lines.push(action.routed
+        ? 'Send a message to continue the conversation.'
+        : 'Reply to Claude\'s messages to continue the conversation.')
+      lines.push(action.routed
+        ? 'Type "exit" to disconnect.'
+        : 'Type "back" for session list or "exit" to disconnect.')
       return lines.join('\n')
     }
 
@@ -125,7 +160,9 @@ export function formatChatActionTelegram(action: ChatAction): string {
       return 'No active Claude sessions found. Start Claude in a terminal first.'
 
     case 'chatting-hint':
-      return 'Reply to Claude\'s messages to continue. Type "back" for sessions or "exit" to disconnect.'
+      return action.routed
+        ? 'Send a message to continue. Type "exit" to disconnect.'
+        : 'Reply to Claude\'s messages to continue. Type "back" for sessions or "exit" to disconnect.'
 
     case 'reset':
       return 'Chat disconnected.'

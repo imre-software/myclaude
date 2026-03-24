@@ -50,13 +50,14 @@ export interface ChatFlowContext {
   sessions: ActiveClaudeSession[]
   selectedSession: ActiveClaudeSession | null
   lastActivity: number
+  routedProject?: string
 }
 
 export type ChatAction =
   | { type: 'session-list', sessions: ActiveClaudeSession[] }
-  | { type: 'session-selected', session: ActiveClaudeSession }
+  | { type: 'session-selected', session: ActiveClaudeSession, routed?: boolean }
   | { type: 'no-sessions' }
-  | { type: 'chatting-hint' }
+  | { type: 'chatting-hint', routed?: boolean }
   | { type: 'reset' }
   | { type: 'invalid-selection', max: number }
 

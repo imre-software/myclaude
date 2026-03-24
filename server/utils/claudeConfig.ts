@@ -449,6 +449,16 @@ export async function installRemoteHooks(hookTypes: { stop: boolean, permissionR
         timeout: 3600,
       }],
     })
+    // ExitPlanMode approval via PreToolUse - tied to stop toggle
+    remoteEntries.push({
+      event: 'PreToolUse',
+      matcher: 'ExitPlanMode',
+      handlers: [{
+        type: 'command',
+        command: REMOTE_SCRIPT_PATH,
+        timeout: 3600,
+      }],
+    })
   }
 
   if (hookTypes.permissionRequest) {

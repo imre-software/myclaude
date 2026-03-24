@@ -5,6 +5,10 @@ interface PendingRequest {
     whatsapp?: string
     telegram?: number
   }
+  targetJids: {
+    whatsapp?: string
+    telegram?: string
+  }
   resolve: (reply: string | null) => void
   timeout: ReturnType<typeof setTimeout>
   createdAt: number
@@ -16,6 +20,7 @@ export function waitForReply(
   sessionId: string,
   hookEvent: string,
   messageIds: { whatsapp?: string, telegram?: number },
+  targetJids: { whatsapp?: string, telegram?: string },
   timeoutMs: number,
 ): Promise<string | null> {
   // If there's already a pending request, resolve it with null (let Claude stop / deny)
@@ -37,6 +42,7 @@ export function waitForReply(
       sessionId,
       hookEvent,
       messageIds,
+      targetJids,
       resolve,
       timeout,
       createdAt: Date.now(),
@@ -54,6 +60,22 @@ export function deliverReply(message: string, sourceMessageId: string | number):
     (typeof sourceMessageId === 'number' && messageIds.telegram === sourceMessageId)
 
   if (!matches) return false
+
+  clearTimeout(pending.timeout)
+  const { resolve } = pending
+  pending = null
+  resolve(message)
+  return true
+}
+
+export function deliverReplyByGroupJid(message: string, groupJid: string, channel: 'whatsapp' | 'telegram'): boolean {
+  if (!pending) return false
+
+  const targetJid = channel === 'whatsapp'
+    ? pending.targetJids.whatsapp
+    : pending.targetJids.telegram
+
+  if (!targetJid || targetJid !== groupJid) return false
 
   clearTimeout(pending.timeout)
   const { resolve } = pending
