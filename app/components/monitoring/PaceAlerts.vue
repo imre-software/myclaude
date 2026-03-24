@@ -53,8 +53,8 @@ function formatDateTime(iso: string): string {
 
   const timePart = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 
-  if (isToday) return `today at ${timePart}`
-  if (isTomorrow) return `tomorrow at ${timePart}`
+  if (isToday) return t('notifications.paceToday', { time: timePart })
+  if (isTomorrow) return t('notifications.paceTomorrow', { time: timePart })
   return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ` at ${timePart}`
 }
 

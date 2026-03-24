@@ -1,5 +1,5 @@
 import { readFile, writeFile, readdir, mkdir, unlink, rm, chmod } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { existsSync } from 'node:fs'
 import type {
   McpServer,
@@ -228,7 +228,15 @@ export async function getMemoryFiles(): Promise<MemoryFile[]> {
 }
 
 export async function updateMemoryFile(filePath: string, content: string): Promise<void> {
-  await writeFile(filePath, content, 'utf-8')
+  const resolved = resolve(filePath)
+  const allowedPrefixes = [
+    join(HOME, '.claude'),
+    process.cwd(),
+  ]
+  if (!allowedPrefixes.some(prefix => resolved.startsWith(prefix))) {
+    throw createError({ statusCode: 403, statusMessage: 'Path outside allowed directories' })
+  }
+  await writeFile(resolved, content, 'utf-8')
 }
 
 // ---- Agents ----

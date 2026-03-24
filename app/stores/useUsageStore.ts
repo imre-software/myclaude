@@ -26,10 +26,12 @@ export const useUsageStore = defineStore('usage', () => {
     if (data.value) return
     isRefreshing.value = true
     const result = await $fetch<UsageResponse>('/api/stats/usage')
-    console.log('[usage] load response:', {
-      rateLimits: result.rateLimits,
-      rateLimited: result.rateLimited,
-    })
+    if (import.meta.dev) {
+      console.log('[usage] load response:', {
+        rateLimits: result.rateLimits,
+        rateLimited: result.rateLimited,
+      })
+    }
     data.value = result
     isRefreshing.value = false
     emitUsageToTray(result)
@@ -41,14 +43,16 @@ export const useUsageStore = defineStore('usage', () => {
       const result = await $fetch<UsageResponse>('/api/stats/usage', {
         query: { refresh: '1', t: Date.now() },
       })
-      console.log('[usage] refresh response:', {
-        rateLimits: result.rateLimits,
-        rateLimited: result.rateLimited,
-      })
+      if (import.meta.dev) {
+        console.log('[usage] refresh response:', {
+          rateLimits: result.rateLimits,
+          rateLimited: result.rateLimited,
+        })
+      }
       data.value = result
       emitUsageToTray(result)
     } catch (err) {
-      console.error('[usage] refresh failed:', err)
+      if (import.meta.dev) console.error('[usage] refresh failed:', err)
     } finally {
       isRefreshing.value = false
     }

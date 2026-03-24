@@ -42,7 +42,8 @@
     "avgCost": "Avg Cost/Session",
     "avgDuration": "Avg Duration",
     "allProjects": "All Projects",
-    "filterByProject": "Filter by project"
+    "filterByProject": "Filter by project",
+    "tokenUsagePerTurn": "Token Usage per Turn"
   },
   "projects": {
     "title": "Projects",
@@ -252,7 +253,18 @@
     "paceWindowsDesc": "Choose which rate limit windows to monitor for pace alerts.",
     "paceHistory": "Recent pace alerts",
     "closeToTray": "Close to tray",
-    "closeToTrayDesc": "Keep the app running in the system tray when you close the window."
+    "closeToTrayDesc": "Keep the app running in the system tray when you close the window.",
+    "cooldown15min": "15 minutes",
+    "cooldown30min": "30 minutes",
+    "cooldown1hr": "1 hour",
+    "cooldown2hr": "2 hours",
+    "soundDefault": "Default",
+    "soundPing": "Ping",
+    "soundGlass": "Glass",
+    "soundHero": "Hero",
+    "soundNone": "None",
+    "paceToday": "today at {time}",
+    "paceTomorrow": "tomorrow at {time}"
   },
   "whatsapp": {
     "tab": "WhatsApp",

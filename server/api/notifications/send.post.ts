@@ -3,11 +3,17 @@ import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 
+const VALID_SOUNDS = new Set([
+  'default', 'Basso', 'Blow', 'Bottle', 'Frog', 'Funk', 'Glass',
+  'Hero', 'Morse', 'Ping', 'Pop', 'Purr', 'Sosumi', 'Submarine', 'Tink',
+])
+
 export default defineEventHandler(async (event) => {
   const { title, body, sound } = await readBody(event)
 
-  const soundClause = sound && sound !== 'none'
-    ? ` sound name "${sound === 'default' ? 'default' : sound}"`
+  const resolvedSound = sound && VALID_SOUNDS.has(sound) ? sound : null
+  const soundClause = resolvedSound
+    ? ` sound name "${resolvedSound}"`
     : ''
 
   const script = `display notification "${escapeAppleScript(body)}" with title "${escapeAppleScript(title)}"${soundClause}`

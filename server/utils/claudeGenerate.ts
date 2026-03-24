@@ -25,8 +25,13 @@ function runClaude(args: string[]): Promise<string> {
 
 async function askClaude(prompt: string): Promise<string> {
   const stdout = await runClaude(['-p', '--output-format', 'json', prompt])
-  const json = JSON.parse(stdout)
-  return (json.result as string) ?? ''
+  try {
+    const json = JSON.parse(stdout)
+    return (json.result as string) ?? ''
+  } catch {
+    if (import.meta.dev) console.error('[claudeGenerate] Non-JSON output from claude:', stdout.slice(0, 200))
+    return stdout.trim() || ''
+  }
 }
 
 export async function generateSkill(userPrompt: string): Promise<GenerateResponse> {

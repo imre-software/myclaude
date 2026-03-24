@@ -6,20 +6,20 @@ const store = useNotificationStore()
 
 const presetLevels = [50, 75, 90, 95]
 
-const cooldownOptions = [
-  { label: '15 minutes', value: 15 },
-  { label: '30 minutes', value: 30 },
-  { label: '1 hour', value: 60 },
-  { label: '2 hours', value: 120 },
-]
+const cooldownOptions = computed(() => [
+  { label: t('notifications.cooldown15min'), value: 15 },
+  { label: t('notifications.cooldown30min'), value: 30 },
+  { label: t('notifications.cooldown1hr'), value: 60 },
+  { label: t('notifications.cooldown2hr'), value: 120 },
+])
 
-const soundOptions = [
-  { label: 'Default', value: 'default' },
-  { label: 'Ping', value: 'Ping' },
-  { label: 'Glass', value: 'Glass' },
-  { label: 'Hero', value: 'Hero' },
-  { label: 'None', value: 'none' },
-]
+const soundOptions = computed(() => [
+  { label: t('notifications.soundDefault'), value: 'default' },
+  { label: t('notifications.soundPing'), value: 'Ping' },
+  { label: t('notifications.soundGlass'), value: 'Glass' },
+  { label: t('notifications.soundHero'), value: 'Hero' },
+  { label: t('notifications.soundNone'), value: 'none' },
+])
 
 const windowConfigs: Array<{ key: NotificationWindowType, label: string }> = [
   { key: 'fiveHour', label: t('notifications.fiveHourWindow') },

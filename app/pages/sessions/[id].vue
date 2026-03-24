@@ -75,7 +75,7 @@ const assistantMessages = computed(() => {
 
       <UCard>
         <template #header>
-          <h3 class="text-base font-semibold">Token Usage per Turn</h3>
+          <h3 class="text-base font-semibold">{{ t('sessions.tokenUsagePerTurn') }}</h3>
         </template>
 
         <div class="divide-y divide-default">

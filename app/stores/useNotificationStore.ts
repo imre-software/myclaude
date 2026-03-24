@@ -32,6 +32,8 @@ export const useNotificationStore = defineStore('notifications', () => {
     chatId: '',
   })
   let eventSource: EventSource | null = null
+  let reconnectDelay = 5_000
+  const MAX_RECONNECT_DELAY = 60_000
 
   function listenForTrayRefresh() {
     if (!isTauriAvailable.value) return
@@ -106,6 +108,7 @@ export const useNotificationStore = defineStore('notifications', () => {
     eventSource = new EventSource('/api/notifications/stream')
 
     eventSource.onmessage = async (event) => {
+      reconnectDelay = 5_000
       try {
         const data = JSON.parse(event.data)
         if (data.type === 'usage-update') {
@@ -120,10 +123,10 @@ export const useNotificationStore = defineStore('notifications', () => {
     }
 
     eventSource.onerror = () => {
-      // Reconnect after a delay
       eventSource?.close()
       eventSource = null
-      setTimeout(connectSSE, 5_000)
+      setTimeout(connectSSE, reconnectDelay)
+      reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY)
     }
   }
 

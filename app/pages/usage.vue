@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const { t } = useI18n()
-const store = useUsageData()
+const store = useUsageStore()
 
 definePageMeta({
   layout: 'dashboard',
