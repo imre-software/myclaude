@@ -107,6 +107,6 @@ jobs:
           tagName: ${{ needs.check-version.outputs.tag }}
           releaseName: '${{ needs.check-version.outputs.tag }}'
           releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
