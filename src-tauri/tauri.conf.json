@@ -33,7 +33,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIyNTRFMTIzNTJFNTNEREUKUldUZVBlVlNJK0ZVc3V3VFFtOGVUaURvZldieVdWNDh6Q1RrQ2M4SGlDNlZRNGZ5dUFkcWpJTVoK",
       "endpoints": [
-        "https://github.com/imresoftware/myclaude/releases/latest/download/latest.json"
+        "https://github.com/imre-software/myclaude/releases/latest/download/latest.json"
       ]
     }
   }
