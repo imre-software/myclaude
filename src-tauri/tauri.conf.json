@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:3019",
-    "beforeBuildCommand": "pnpm build && rm -rf src-tauri/server && mkdir -p src-tauri/server && cp -r .output/server/* src-tauri/server/"
+    "beforeBuildCommand": "pnpm build && node scripts/copy-server.mjs"
   },
   "app": {
     "windows": [],
