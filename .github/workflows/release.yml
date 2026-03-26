@@ -61,7 +61,7 @@ jobs:
             args: --target x86_64-apple-darwin
             rust-target: x86_64-apple-darwin
           - platform: ubuntu-22.04
-            args: ''
+            args: '--bundles deb'
             rust-target: ''
           - platform: windows-latest
             args: ''
