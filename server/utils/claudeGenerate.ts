@@ -105,6 +105,111 @@ Output ONLY the complete updated content. No explanations, no markdown fences, j
   return cleaned
 }
 
+export interface McpConfigField {
+  key: string
+  label: string
+  target: 'env' | 'header' | 'arg'
+  required: boolean
+  sensitive: boolean
+  placeholder: string
+  description: string
+  valuePrefix?: string
+}
+
+export interface McpServerConfig {
+  fields: McpConfigField[]
+  notes?: string
+}
+
+const FALLBACK_HTTP: McpServerConfig = {
+  fields: [{
+    key: 'Authorization',
+    label: 'API Key',
+    target: 'header',
+    required: true,
+    sensitive: true,
+    placeholder: 'your-api-key',
+    description: 'API key or access token',
+    valuePrefix: 'Bearer ',
+  }],
+}
+
+const FALLBACK_STDIO: McpServerConfig = {
+  fields: [{
+    key: 'API_KEY',
+    label: 'API Key',
+    target: 'env',
+    required: false,
+    sensitive: true,
+    placeholder: 'your-api-key',
+    description: 'API key (if required)',
+  }],
+}
+
+export async function discoverMcpConfig(
+  serverName: string,
+  serverUrl: string,
+  serverType: 'http' | 'sse' | 'stdio',
+): Promise<McpServerConfig> {
+  const transportContext = serverType === 'stdio'
+    ? `This is a stdio (local process) MCP server installed via npm package "${serverUrl}".`
+    : `This is an HTTP/SSE remote MCP server at URL "${serverUrl}".`
+
+  const prompt = `What configuration does the MCP server "${serverName}" need?
+${transportContext}
+
+Return ONLY valid JSON (no markdown, no code fences) with this structure:
+{
+  "fields": [
+    {
+      "key": "ENV_VAR_NAME or Header-Name",
+      "label": "Human-readable label",
+      "target": "env" or "header" or "arg",
+      "required": true/false,
+      "sensitive": true/false,
+      "placeholder": "example-value",
+      "description": "Where to find this value",
+      "valuePrefix": "Bearer " (only for headers that need a prefix before the raw value, omit otherwise)
+    }
+  ],
+  "notes": "Optional setup instructions"
+}
+
+Rules:
+- For stdio servers, config values go in "env" (environment variables) or "arg" (command line arguments)
+- For HTTP/SSE servers, auth goes in "header", other config in the URL or as separate fields
+- Include ALL required configuration, not just API keys (e.g. project IDs, org IDs, region settings, team IDs)
+- Mark tokens/keys/passwords as sensitive: true
+- If you don't recognize the server, return a single API key field with target "${serverType === 'stdio' ? 'env' : 'header'}"
+- Be specific about the exact key/header name the server expects`
+
+  try {
+    const raw = await askClaude(prompt)
+    const cleaned = raw.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '').trim()
+    const parsed = JSON.parse(cleaned)
+
+    if (!Array.isArray(parsed.fields) || parsed.fields.length === 0) {
+      return serverType === 'stdio' ? FALLBACK_STDIO : FALLBACK_HTTP
+    }
+
+    return {
+      fields: parsed.fields.map((f: Record<string, unknown>) => ({
+        key: String(f.key || ''),
+        label: String(f.label || f.key || ''),
+        target: (['env', 'header', 'arg'].includes(String(f.target)) ? f.target : 'env') as McpConfigField['target'],
+        required: !!f.required,
+        sensitive: !!f.sensitive,
+        placeholder: String(f.placeholder || ''),
+        description: String(f.description || ''),
+        ...(f.valuePrefix ? { valuePrefix: String(f.valuePrefix) } : {}),
+      })),
+      notes: parsed.notes ? String(parsed.notes) : undefined,
+    }
+  } catch {
+    return serverType === 'stdio' ? FALLBACK_STDIO : FALLBACK_HTTP
+  }
+}
+
 export async function createHook(userPrompt: string): Promise<void> {
   await runClaude([
     '-p',

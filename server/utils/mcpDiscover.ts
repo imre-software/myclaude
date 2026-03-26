@@ -6,6 +6,17 @@ export interface McpToolInfo {
   description?: string
 }
 
+export interface McpDiscoveryError {
+  type: 'auth_required' | 'forbidden' | 'connection_error' | 'timeout' | 'server_error' | 'unknown'
+  status?: number
+  message: string
+}
+
+export interface McpDiscoveryResult {
+  tools: McpToolInfo[]
+  error?: McpDiscoveryError
+}
+
 interface JsonRpcResponse {
   jsonrpc: string
   id: number | string
@@ -20,15 +31,16 @@ interface JsonRpcResponse {
 /**
  * Discover tools from an MCP server.
  * Supports both stdio (spawn process) and HTTP (POST JSON-RPC) transports.
+ * Returns structured result with error details instead of silently failing.
  */
-export async function discoverMcpTools(server: McpServer, timeoutMs = 10_000): Promise<McpToolInfo[]> {
+export async function discoverMcpTools(server: McpServer, timeoutMs = 10_000): Promise<McpDiscoveryResult> {
   if (server.type === 'stdio' && server.command) {
     return discoverStdio(server, timeoutMs)
   }
   if ((server.type === 'http' || server.type === 'sse') && server.url) {
     return discoverHttp(server, timeoutMs)
   }
-  return []
+  return { tools: [], error: { type: 'unknown', message: 'Invalid server configuration' } }
 }
 
 function extractTools(data: JsonRpcResponse): McpToolInfo[] {
@@ -40,7 +52,7 @@ function extractTools(data: JsonRpcResponse): McpToolInfo[] {
 }
 
 // HTTP/SSE transport: POST JSON-RPC to the server URL
-async function discoverHttp(server: McpServer, timeoutMs: number): Promise<McpToolInfo[]> {
+async function discoverHttp(server: McpServer, timeoutMs: number): Promise<McpDiscoveryResult> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json, text/event-stream',
@@ -65,6 +77,20 @@ async function discoverHttp(server: McpServer, timeoutMs: number): Promise<McpTo
       signal: AbortSignal.timeout(timeoutMs),
     })
 
+    // Check HTTP status before parsing
+    if (initRes.status === 401) {
+      return { tools: [], error: { type: 'auth_required', status: 401, message: 'Server requires authentication' } }
+    }
+    if (initRes.status === 403) {
+      return { tools: [], error: { type: 'forbidden', status: 403, message: 'Access denied - invalid or insufficient credentials' } }
+    }
+    if (initRes.status >= 500) {
+      return { tools: [], error: { type: 'server_error', status: initRes.status, message: `Server error (${initRes.status})` } }
+    }
+    if (!initRes.ok) {
+      return { tools: [], error: { type: 'unknown', status: initRes.status, message: `Unexpected response (${initRes.status})` } }
+    }
+
     // Extract session ID if present
     const sessionId = initRes.headers.get('mcp-session-id')
     if (sessionId) {
@@ -73,7 +99,18 @@ async function discoverHttp(server: McpServer, timeoutMs: number): Promise<McpTo
 
     // Parse init response - handle both JSON and SSE
     const initData = await parseHttpResponse(initRes)
-    if (!initData?.result?.protocolVersion) return []
+
+    // Check for JSON-RPC error (servers like Galileo return HTTP 200 with error body)
+    if (initData?.error) {
+      const msg = initData.error.message ?? 'Server returned an error'
+      const lower = msg.toLowerCase()
+      const isAuth = lower.includes('auth') || lower.includes('api key') || lower.includes('unauthorized') || lower.includes('token')
+      return { tools: [], error: { type: isAuth ? 'auth_required' : 'unknown', message: msg } }
+    }
+
+    if (!initData?.result?.protocolVersion) {
+      return { tools: [], error: { type: 'unknown', message: 'Invalid MCP response - missing protocol version' } }
+    }
 
     // Send initialized notification
     await fetch(server.url!, {
@@ -92,11 +129,25 @@ async function discoverHttp(server: McpServer, timeoutMs: number): Promise<McpTo
     })
 
     const toolsData = await parseHttpResponse(toolsRes)
-    if (!toolsData) return []
+    if (!toolsData) {
+      return { tools: [], error: { type: 'unknown', message: 'Failed to parse tools response' } }
+    }
 
-    return extractTools(toolsData)
-  } catch {
-    return []
+    // Check for JSON-RPC error on tools/list
+    if (toolsData.error) {
+      const msg = toolsData.error.message ?? 'Failed to list tools'
+      const lower = msg.toLowerCase()
+      const isAuth = lower.includes('auth') || lower.includes('api key') || lower.includes('unauthorized') || lower.includes('token')
+      return { tools: [], error: { type: isAuth ? 'auth_required' : 'unknown', message: msg } }
+    }
+
+    return { tools: extractTools(toolsData) }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      return { tools: [], error: { type: 'timeout', message: 'Connection timed out' } }
+    }
+    const msg = err instanceof Error ? err.message : 'Unknown error'
+    return { tools: [], error: { type: 'connection_error', message: `Could not connect to server: ${msg}` } }
   }
 }
 
@@ -126,21 +177,29 @@ async function parseHttpResponse(res: Response): Promise<JsonRpcResponse | null>
 }
 
 // Stdio transport: spawn process and communicate via stdin/stdout
-function discoverStdio(server: McpServer, timeoutMs: number): Promise<McpToolInfo[]> {
+function discoverStdio(server: McpServer, timeoutMs: number): Promise<McpDiscoveryResult> {
   return new Promise((resolve) => {
-    const proc = spawn(server.command!, server.args ?? [], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, ...server.env },
-    })
+    let proc: ReturnType<typeof spawn>
+    try {
+      proc = spawn(server.command!, server.args ?? [], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, ...server.env },
+      })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      resolve({ tools: [], error: { type: 'connection_error', message: `Failed to start process: ${msg}` } })
+      return
+    }
 
     let buffer = ''
+    let stderrBuffer = ''
     let msgId = 0
     let initialized = false
-    const timer = setTimeout(() => cleanup([]), timeoutMs)
+    const timer = setTimeout(() => cleanup({ tools: [], error: { type: 'timeout', message: 'Process timed out' } }), timeoutMs)
 
-    function cleanup(result: McpToolInfo[]) {
+    function cleanup(result: McpDiscoveryResult) {
       clearTimeout(timer)
-      proc.stdin.end()
+      proc.stdin!.end()
       proc.kill()
       resolve(result)
     }
@@ -148,10 +207,10 @@ function discoverStdio(server: McpServer, timeoutMs: number): Promise<McpToolInf
     function send(method: string, params: Record<string, unknown> = {}) {
       msgId++
       const msg = JSON.stringify({ jsonrpc: '2.0', id: msgId, method, params })
-      proc.stdin.write(msg + '\n')
+      proc.stdin!.write(msg + '\n')
     }
 
-    proc.stdout.on('data', (chunk: Buffer) => {
+    proc.stdout!.on('data', (chunk: Buffer) => {
       buffer += chunk.toString()
       const lines = buffer.split('\n')
       buffer = lines.pop() ?? ''
@@ -169,20 +228,30 @@ function discoverStdio(server: McpServer, timeoutMs: number): Promise<McpToolInf
 
         if (!initialized && msg.result?.protocolVersion) {
           initialized = true
-          proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n')
+          proc.stdin!.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n')
           send('tools/list')
         } else if (initialized && msg.result?.tools) {
-          cleanup(extractTools(msg))
+          cleanup({ tools: extractTools(msg) })
         } else if (msg.error) {
-          cleanup([])
+          cleanup({ tools: [], error: { type: 'unknown', message: msg.error.message } })
         }
       }
     })
 
-    proc.on('error', () => cleanup([]))
-    proc.on('exit', () => {
+    proc.stderr?.on('data', (chunk: Buffer) => {
+      stderrBuffer += chunk.toString()
+    })
+
+    proc.on('error', (err) => {
+      cleanup({ tools: [], error: { type: 'connection_error', message: err.message } })
+    })
+    proc.on('exit', (code) => {
       clearTimeout(timer)
-      resolve([])
+      if (code !== 0 && stderrBuffer.trim()) {
+        resolve({ tools: [], error: { type: 'connection_error', message: stderrBuffer.trim().slice(0, 500) } })
+      } else {
+        resolve({ tools: [], error: { type: 'connection_error', message: `Process exited with code ${code}` } })
+      }
     })
 
     send('initialize', {

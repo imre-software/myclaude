@@ -111,10 +111,10 @@ watch(mcpServerName, async (name) => {
 
   isLoadingMcpTools.value = true
   try {
-    const tools = await $fetch<Array<{ name: string, description?: string }>>('/api/settings/mcp-tools', {
+    const result = await $fetch<{ tools: Array<{ name: string, description?: string }>, error?: { message: string } }>('/api/settings/mcp-tools', {
       params: { server: name },
     })
-    mcpToolsCache.value[name] = tools
+    mcpToolsCache.value[name] = result.tools
   } catch {
     mcpToolsCache.value[name] = []
   } finally {
