@@ -143,6 +143,15 @@ export const useNotificationStore = defineStore('notifications', () => {
     }
   }
 
+  async function openSettings() {
+    if (!isTauriAvailable.value) return
+    try {
+      await invoke('open_notification_settings')
+    } catch {
+      // Tauri not available
+    }
+  }
+
   async function sendNativeNotification(title: string, body: string, sound?: string) {
     const resolvedSound = sound ?? settings.value.sound
     if (isTauriAvailable.value) {
@@ -192,6 +201,7 @@ export const useNotificationStore = defineStore('notifications', () => {
     telegramStatus,
     init,
     requestPermission,
+    openSettings,
     updateSettings,
     loadUnreadCount,
     loadWhatsAppStatus,

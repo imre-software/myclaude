@@ -49,6 +49,16 @@ pnpm dev
 
 The app runs on `http://localhost:3019`.
 
+### macOS - Installing from GitHub Releases
+
+After downloading the `.dmg` and moving My Claude to Applications, macOS may block the app the first time you open it. To allow it:
+
+1. Open **System Settings > Privacy & Security**
+2. Scroll down to the Security section
+3. Click **Open Anyway** next to the message about My Claude
+
+This is standard for apps distributed outside the Mac App Store.
+
 ## Building
 
 ```bash

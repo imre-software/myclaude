@@ -192,6 +192,11 @@ fn send_notification(title: String, body: String, sound: Option<String>) -> Resu
 }
 
 #[tauri::command]
+fn open_notification_settings() -> Result<(), String> {
+    notifications::open_settings()
+}
+
+#[tauri::command]
 fn set_close_to_tray(state: tauri::State<CloseToTray>, enabled: bool) {
     *state.0.lock().unwrap() = enabled;
 }
@@ -228,6 +233,7 @@ fn main() {
             request_notification_permission,
             check_notification_permission,
             send_notification,
+            open_notification_settings,
             set_close_to_tray,
             update_tray_usage,
         ])

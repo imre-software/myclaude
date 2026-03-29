@@ -97,7 +97,11 @@ async function handleToggleCloseToTray(value: boolean) {
 const toast = useToast()
 
 async function handleRequestPermission() {
-  await store.requestPermission()
+  if (store.permissionStatus === 'not-determined') {
+    await store.requestPermission()
+  } else {
+    await store.openSettings()
+  }
 }
 
 async function handleTestNotification() {
@@ -145,10 +149,10 @@ async function handleTestNotification() {
         <p class="text-base text-yellow-700 dark:text-yellow-300">{{ t('notifications.permissionNotDetermined') }}</p>
       </div>
       <UButton
-        icon="i-lucide-bell"
+        :icon="store.permissionStatus === 'not-determined' ? 'i-lucide-bell' : 'i-lucide-settings'"
         @click="handleRequestPermission"
       >
-        {{ t('notifications.requestPermission') }}
+        {{ store.permissionStatus === 'not-determined' ? t('notifications.requestPermission') : t('notifications.openSettings') }}
       </UButton>
     </div>
 

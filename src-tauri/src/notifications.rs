@@ -108,7 +108,7 @@ pub fn check_permission() -> Result<String, String> {
 
     use block2::RcBlock;
     use objc2_user_notifications::{
-        UNNotificationSettings, UNUserNotificationCenter,
+        UNAuthorizationStatus, UNNotificationSettings, UNUserNotificationCenter,
     };
     use std::ptr::NonNull;
 
@@ -116,13 +116,12 @@ pub fn check_permission() -> Result<String, String> {
 
     let handler = RcBlock::new(move |settings: NonNull<UNNotificationSettings>| {
         let status = unsafe { settings.as_ref() }.authorizationStatus();
-        // Raw comparison using the integer value for reliability
-        let raw: isize = unsafe { std::mem::transmute(status) };
-        let s = match raw {
-            0 => "not-determined",
-            1 => "denied",
-            2 => "granted",
-            3 => "provisional",
+        let s = match status {
+            UNAuthorizationStatus::NotDetermined => "not-determined",
+            UNAuthorizationStatus::Denied => "denied",
+            UNAuthorizationStatus::Authorized => "granted",
+            UNAuthorizationStatus::Provisional => "provisional",
+            UNAuthorizationStatus::Ephemeral => "ephemeral",
             _ => "unknown",
         };
         let _ = tx.send(s.to_string());
@@ -190,6 +189,15 @@ pub fn send(title: &str, body: &str, sound: Option<&str>) -> Result<(), String> 
     rx.recv().map_err(|e| format!("Channel error: {e}"))?
 }
 
+#[cfg(target_os = "macos")]
+pub fn open_settings() -> Result<(), String> {
+    std::process::Command::new("open")
+        .arg("x-apple.systempreferences:com.apple.Notifications-Settings.extension")
+        .spawn()
+        .map_err(|e| format!("Failed to open notification settings: {e}"))?;
+    Ok(())
+}
+
 // ── Windows / Linux: notify-rust ──
 
 #[cfg(not(target_os = "macos"))]
@@ -200,6 +208,11 @@ pub fn request_permission() -> Result<bool, String> {
 #[cfg(not(target_os = "macos"))]
 pub fn check_permission() -> Result<String, String> {
     Ok("granted".to_string())
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn open_settings() -> Result<(), String> {
+    Ok(())
 }
 
 #[cfg(not(target_os = "macos"))]
