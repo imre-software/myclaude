@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:3019",
-    "beforeBuildCommand": "pnpm build && node scripts/copy-server.mjs"
+    "beforeBuildCommand": "pnpm build"
   },
   "app": {
     "windows": [],
@@ -29,7 +29,7 @@
     ],
     "createUpdaterArtifacts": true,
     "resources": {
-      "server": "server"
+      "../.output/server": "server"
     }
   },
   "plugins": {

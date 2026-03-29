@@ -6,6 +6,9 @@
 .cache
 dist
 
+# Copied server build (now bundled directly from .output/)
+src-tauri/server
+
 # Node dependencies
 node_modules
 
